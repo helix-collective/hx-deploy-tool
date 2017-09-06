@@ -1,0 +1,20 @@
+module config
+{
+
+type FilePath = String;
+type S3Path = String;
+
+struct DeployContextFile
+{
+    FilePath name;
+    S3Path source;
+};
+
+/// Configuration file for the deployment tool
+struct ToolConfig {
+    FilePath releasesDir = "/opt/releases";
+    FilePath contextCache = "/opt/etc/deployment";
+    Vector<DeployContextFile> deployContextFiles;
+};
+
+};

@@ -1,0 +1,15 @@
+module release
+{
+
+type FilePath = String;
+
+/// Configuration for a package to be customized
+/// when unpacked
+struct ReleaseConfig
+{
+    Vector<FilePath> templates;
+    String startScript;
+    String stopScript;
+};
+
+};
