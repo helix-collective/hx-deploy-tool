@@ -24,7 +24,7 @@ import Data.Foldable(for_)
 import Data.Traversable(for)
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory)
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
-import System.Posix.Files(createLink, removeLink)
+import System.Posix.Files(createSymbolicLink, removeLink)
 import System.IO(stdout)
 import System.Process(callProcess,callCommand)
 import Text.Mustache(ToMustache,automaticCompile,substitute)
@@ -95,12 +95,12 @@ select tcfg release = do
   -- symlink the current release to point to the new one
   when currentExists $ do
     removeLink currentReleaseLink
-  createLink newReleaseDir currentReleaseLink
+  createSymbolicLink newReleaseDir currentReleaseLink
 
   -- start it
   withCurrentDirectory currentReleaseLink $ do
     rcfg <- adlFromJsonFile' "release.json"
-    callCommand (T.unpack (rc_stopCommand rcfg))
+    callCommand (T.unpack (rc_startCommand rcfg))
 
 downloadFileFromS3 :: Env -> BucketName -> ObjectKey -> FilePath -> IO ()
 downloadFileFromS3 env bucketName  objectKey toFilePath = do
