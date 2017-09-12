@@ -1,0 +1,7 @@
+module config
+{
+import adlc.config.haskell.HaskellFieldPrefix;
+
+annotation DeployContextFile HaskellFieldPrefix "dcf_";
+annotation ToolConfig HaskellFieldPrefix "tc_";
+};

@@ -1,39 +1,40 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Release(
-    FilePath,
     ReleaseConfig(..),
 ) where
 
 import ADL.Core
 import Control.Applicative( (<$>), (<*>), (<|>) )
+import qualified ADL.Types
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Proxy
 import qualified Data.Text as T
 import qualified Prelude
 
-type FilePath = T.Text
-
 data ReleaseConfig = ReleaseConfig
-    { releaseConfig_templates :: [FilePath]
-    , releaseConfig_startScript :: T.Text
-    , releaseConfig_stopScript :: T.Text
+    { rc_templates :: [ADL.Types.FilePath]
+    , rc_prestartCommand :: T.Text
+    , rc_startCommand :: T.Text
+    , rc_stopCommand :: T.Text
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkReleaseConfig :: [FilePath] -> T.Text -> T.Text -> ReleaseConfig
-mkReleaseConfig templates startScript stopScript = ReleaseConfig templates startScript stopScript
+mkReleaseConfig :: [ADL.Types.FilePath] -> T.Text -> T.Text -> T.Text -> ReleaseConfig
+mkReleaseConfig templates prestartCommand startCommand stopCommand = ReleaseConfig templates prestartCommand startCommand stopCommand
 
 instance AdlValue ReleaseConfig where
     atype _ = "release.ReleaseConfig"
     
     jsonGen = genObject
-        [ genField "templates" releaseConfig_templates
-        , genField "startScript" releaseConfig_startScript
-        , genField "stopScript" releaseConfig_stopScript
+        [ genField "templates" rc_templates
+        , genField "prestartCommand" rc_prestartCommand
+        , genField "startCommand" rc_startCommand
+        , genField "stopCommand" rc_stopCommand
         ]
     
     jsonParser = ReleaseConfig
         <$> parseField "templates"
-        <*> parseField "startScript"
-        <*> parseField "stopScript"
+        <*> parseField "prestartCommand"
+        <*> parseField "startCommand"
+        <*> parseField "stopCommand"

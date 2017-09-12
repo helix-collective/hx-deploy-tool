@@ -1,15 +1,16 @@
 module release
 {
 
-type FilePath = String;
+import types.FilePath;
 
 /// Configuration for a package to be customized
 /// when unpacked
 struct ReleaseConfig
 {
     Vector<FilePath> templates;
-    String startScript;
-    String stopScript;
+    String prestartCommand;
+    String startCommand;
+    String stopCommand;
 };
 
 };

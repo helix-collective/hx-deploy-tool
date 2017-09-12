@@ -1,0 +1,8 @@
+module types
+{
+
+type FilePath = String;
+
+type S3Path = String;
+
+};

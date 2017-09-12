@@ -1,0 +1,6 @@
+module release
+{
+import adlc.config.haskell.HaskellFieldPrefix;
+
+annotation ReleaseConfig HaskellFieldPrefix "rc_";
+};
