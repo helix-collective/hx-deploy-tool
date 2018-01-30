@@ -7,6 +7,8 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
+import qualified Text.Mustache as TM
+import qualified Text.Mustache.Types as TM
 
 import ADL.Config(ToolConfig(..), DeployContextFile(..))
 import ADL.Release(ReleaseConfig(..))
@@ -27,7 +29,6 @@ import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Posix.Files(createSymbolicLink, removeLink)
 import System.IO(stdout)
 import System.Process(callProcess,callCommand)
-import Text.Mustache(ToMustache,automaticCompile,substitute)
 import Network.AWS.S3(getObject, gorsBody, BucketName(..), ObjectKey(..))
 import Network.AWS.Data.Body(RsBody(..))
 import Network.AWS.Data.Text(ToText(..))
@@ -65,6 +66,7 @@ unpack tcfg release toDir = do
   -- load and merge the infrastructure context
   ctx <- loadMergedContext tcfg
 
+
   -- interpolate the context into each templated file
   for_ (rc_templates rcfg) $ \templatePath -> do
     expandTemplateFile ctx (toDir </> T.unpack templatePath)
@@ -73,6 +75,9 @@ select :: ToolConfig -> T.Text -> IO ()
 select tcfg release = do
   let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
   let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
+
+  -- Fetch the context in case it has been updated
+  fetchContext tcfg
 
   -- unpack new release
   createDirectoryIfMissing True newReleaseDir
@@ -122,11 +127,11 @@ loadMergedContext tcfg = do
 
 expandTemplateFile :: JS.Value -> FilePath -> IO ()
 expandTemplateFile ctx templatePath = do
-  etemplate <- automaticCompile [takeDirectory templatePath] templatePath
+  etemplate <- TM.automaticCompile [takeDirectory templatePath] templatePath
   case etemplate of
    Left err -> error (show err)
    Right template -> do
-     let text = substitute template ctx
+     let text = TM.substitute template ctx
          outfile = dropExtension templatePath
      T.writeFile outfile text
 
