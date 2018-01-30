@@ -14,7 +14,7 @@ import System.Posix.Files(fileExist)
 usage :: IO ()
 usage = do
   putStrLn "Usage:"
-  putStrLn "  hx-deploy-tool fetch-context"
+  putStrLn "  hx-deploy-tool fetch-context [--retry]"
   putStrLn "  hx-deploy-tool unpack <releaseid> <todir>"
   putStrLn "  hx-deploy-tool select <releaseid>"
   putStrLn ""
@@ -37,7 +37,10 @@ main = do
   case args of
     ["fetch-context"] -> do
       config <- adlFromJsonFile' configPath
-      fetchContext config
+      fetchContext config Nothing
+    ["fetch-context","--retry"] -> do
+      config <- adlFromJsonFile' configPath
+      fetchContext config (Just 10)
     ["unpack", release, toDir] -> do
       config <- adlFromJsonFile' configPath
       unpack config (T.pack release) toDir

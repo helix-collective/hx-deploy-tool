@@ -14,10 +14,13 @@ import ADL.Config(ToolConfig(..), DeployContextFile(..))
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile')
 import Codec.Archive.Zip(withArchive, unpackInto)
+import Control.Concurrent(threadDelay)
+import Control.Exception.Lens
 import Control.Monad(when)
 import Control.Monad.IO.Class
 import Control.Monad.Trans.AWS
 import Control.Monad.Trans.Resource
+import Control.Monad.Catch
 import Control.Lens
 import Data.Monoid
 import Data.Conduit(runConduit, (.|), ($$), ($$+-))
@@ -32,18 +35,19 @@ import System.Process(callProcess,callCommand)
 import Network.AWS.S3(getObject, gorsBody, BucketName(..), ObjectKey(..))
 import Network.AWS.Data.Body(RsBody(..))
 import Network.AWS.Data.Text(ToText(..))
+import Network.HTTP.Types.Status(notFound404)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 
 --- Download the infrastructure context files from S3
-fetchContext :: ToolConfig -> IO ()
-fetchContext tcfg = do
+fetchContext :: ToolConfig -> Maybe Int -> IO ()
+fetchContext tcfg retryAfter = do
   let cacheDir = T.unpack (tc_contextCache tcfg)
   createDirectoryIfMissing True cacheDir
   env <- mkAwsEnv
   for_ (tc_deployContextFiles tcfg) $ \cf -> do
     let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
         (bucketName,objectKey) = splitS3Path (dcf_source cf)
-    downloadFileFromS3 env bucketName objectKey cacheFilePath
+    downloadFileFromS3 env bucketName objectKey cacheFilePath retryAfter
 
 -- unpack a release into the specified directory, and expand any templates
 unpack :: ToolConfig -> T.Text -> FilePath -> IO ()
@@ -55,7 +59,7 @@ unpack tcfg release toDir = do
       releaseFilePath = toDir </> T.unpack release
 
   -- download the release zip file
-  downloadFileFromS3 env bucketName objectKey releaseFilePath
+  downloadFileFromS3 env bucketName objectKey releaseFilePath Nothing
 
   -- expand the zip file
   withArchive (toFilePath releaseFilePath) (unpackInto (toDirPath toDir))
@@ -77,7 +81,7 @@ select tcfg release = do
   let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
 
   -- Fetch the context in case it has been updated
-  fetchContext tcfg
+  fetchContext tcfg Nothing
 
   -- unpack new release
   createDirectoryIfMissing True newReleaseDir
@@ -107,12 +111,21 @@ select tcfg release = do
     rcfg <- adlFromJsonFile' "release.json"
     callCommand (T.unpack (rc_startCommand rcfg))
 
-downloadFileFromS3 :: Env -> BucketName -> ObjectKey -> FilePath -> IO ()
-downloadFileFromS3 env bucketName  objectKey toFilePath = do
-  T.putStrLn ("Downloading s3://" <> toText bucketName <> "/" <> toText objectKey <> " to " <> T.pack toFilePath)
-  runResourceT . runAWST env $ do
-    resp <- send (getObject bucketName objectKey)
-    liftResourceT (_streamBody (view gorsBody resp) $$+- sinkFile toFilePath)
+downloadFileFromS3 :: Env -> BucketName -> ObjectKey -> FilePath -> Maybe Int -> IO ()
+downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter = do
+  handling _ServiceError onServiceError $ do
+    T.putStrLn ("Downloading s3://" <> toText bucketName <> "/" <> toText objectKey <> " to " <> T.pack toFilePath)
+    runResourceT . runAWST env $ do
+      resp <- send (getObject bucketName objectKey)
+      liftResourceT (_streamBody (view gorsBody resp) $$+- sinkFile toFilePath)
+  where
+   onServiceError :: ServiceError -> IO ()
+   onServiceError se =
+     case retryAfter of
+        Nothing -> throwing _ServiceError se
+        (Just delaySecs) -> do
+          threadDelay (1000000 * delaySecs)
+          downloadFileFromS3 env bucketName objectKey toFilePath retryAfter
 
 loadMergedContext :: ToolConfig -> IO JS.Value
 loadMergedContext tcfg = do
