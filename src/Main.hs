@@ -5,7 +5,7 @@ import qualified Data.Text as T
 
 import ADL.Config(ToolConfig(..))
 import ADL.Core(adlFromJsonFile')
-import Commands(fetchContext, select, unpack)
+import Commands(fetchContext, select, unpack, awsDockerLoginCmd)
 import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
 import System.FilePath(takeDirectory, (</>))
@@ -17,6 +17,7 @@ usage = do
   putStrLn "  hx-deploy-tool fetch-context [--retry]"
   putStrLn "  hx-deploy-tool unpack <releaseid> <todir>"
   putStrLn "  hx-deploy-tool select <releaseid>"
+  putStrLn "  hx-deploy-tool aws-docker-login-cmd"
   putStrLn ""
   putStrLn "The config file is read from the file specified with HX_DEPLOY_CONFIG."
   putStrLn "It defaults to ../etc/hx-deploy-tool.json (relative to the executable)."
@@ -47,6 +48,9 @@ main = do
     ["select", release] -> do
       config <- adlFromJsonFile' configPath
       select config (T.pack release)
+    ["aws-docker-login-cmd"] -> do
+      config <- adlFromJsonFile' configPath
+      awsDockerLoginCmd config
     _ -> do
       usage
       exitWith (ExitFailure 1)

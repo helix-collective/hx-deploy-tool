@@ -28,6 +28,7 @@ executable hx-deploy-tool
                      , amazonka >= 1.4 && < 1.5
                      , amazonka-core >= 1.4 && < 1.5
                      , amazonka-s3 >= 1.4 && < 1.5
+                     , amazonka-ecr >= 1.4 && < 1.5
                      , base64-bytestring >= 1.0 && < 1.1
                      , bytestring >= 0.10 && < 0.11
                      , conduit >= 1.2.9 && < 1.3

@@ -3,12 +3,14 @@ module Commands where
 
 import qualified Data.Aeson as JS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Base64 as B64
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
+import qualified Network.AWS.ECR as ECR
 
 import ADL.Config(ToolConfig(..), DeployContextFile(..))
 import ADL.Release(ReleaseConfig(..))
@@ -22,6 +24,7 @@ import Control.Monad.Trans.AWS
 import Control.Monad.Trans.Resource
 import Control.Monad.Catch
 import Control.Lens
+import Data.Maybe(fromMaybe)
 import Data.Monoid
 import Data.Conduit(runConduit, (.|), ($$), ($$+-))
 import Data.Conduit.Binary(sinkFile)
@@ -110,6 +113,31 @@ select tcfg release = do
   withCurrentDirectory currentReleaseLink $ do
     rcfg <- adlFromJsonFile' "release.json"
     callCommand (T.unpack (rc_startCommand rcfg))
+
+-- Output the command line to docker login to access the default
+-- repository
+awsDockerLoginCmd :: ToolConfig -> IO ()
+awsDockerLoginCmd tcfg = do
+  env <- mkAwsEnv
+  runResourceT . runAWST env $ do
+    resp <- send ECR.getAuthorizationToken
+    case view ECR.gatrsAuthorizationData resp of
+      [authData] -> do
+        let rawtoken = fromMaybe ("error no token in authdata") (view ECR.adAuthorizationToken authData)
+        let rawendpoint = fromMaybe ("error no endpointing in authdata") (view ECR.adProxyEndpoint authData)
+        liftIO $ T.putStrLn (loginCmd rawtoken rawendpoint)
+      _ -> error ("Expected authdata for a single registry")
+  where
+    loginCmd :: T.Text -> T.Text -> T.Text
+    loginCmd rawtoken rawendpoint = "docker login -u AWS -p " <> password <> " " <> endpoint
+      where
+        password = case (T.stripPrefix "AWS:". T.decodeUtf8 . B64.decodeLenient . T.encodeUtf8) rawtoken of
+          Nothing -> error ("Unable to decode docker password")
+          (Just password) -> password
+
+        endpoint = case T.stripPrefix "https://" rawendpoint of
+          Nothing -> endpoint
+          (Just endpoint) -> endpoint
 
 downloadFileFromS3 :: Env -> BucketName -> ObjectKey -> FilePath -> Maybe Int -> IO ()
 downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter = do
