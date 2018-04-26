@@ -4,6 +4,7 @@ module Commands where
 import qualified Data.Aeson as JS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Base64 as B64
+import qualified Data.Conduit.List as CL
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -11,6 +12,7 @@ import qualified Data.Text.IO as T
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
 import qualified Network.AWS.ECR as ECR
+import qualified Network.AWS.S3 as S3
 
 import ADL.Config(ToolConfig(..), DeployContextFile(..))
 import ADL.Release(ReleaseConfig(..))
@@ -24,9 +26,10 @@ import Control.Monad.Trans.AWS
 import Control.Monad.Trans.Resource
 import Control.Monad.Catch
 import Control.Lens
+import Data.List(sortOn)
 import Data.Maybe(fromMaybe)
 import Data.Monoid
-import Data.Conduit(runConduit, (.|), ($$), ($$+-))
+import Data.Conduit((.|), ($$), ($$+-))
 import Data.Conduit.Binary(sinkFile)
 import Data.Foldable(for_)
 import Data.Traversable(for)
@@ -35,7 +38,6 @@ import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Posix.Files(createSymbolicLink, removeLink)
 import System.IO(stdout)
 import System.Process(callProcess,callCommand)
-import Network.AWS.S3(getObject, gorsBody, BucketName(..), ObjectKey(..))
 import Network.AWS.Data.Body(RsBody(..))
 import Network.AWS.Data.Text(ToText(..))
 import Network.HTTP.Types.Status(notFound404)
@@ -57,8 +59,8 @@ unpack :: ToolConfig -> T.Text -> FilePath -> IO ()
 unpack tcfg release toDir = do
   env <- mkAwsEnv
   createDirectoryIfMissing True toDir
-  let (bucketName,ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
-      objectKey = ObjectKey (bucketPath <> "/" <> release)
+  let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
+      objectKey = S3.ObjectKey (bucketPath <> "/" <> release)
       releaseFilePath = toDir </> T.unpack release
 
   -- download the release zip file
@@ -78,6 +80,7 @@ unpack tcfg release toDir = do
   for_ (rc_templates rcfg) $ \templatePath -> do
     expandTemplateFile ctx (toDir </> T.unpack templatePath)
 
+-- Make the specified release the live release, replacing any existing release.
 select :: ToolConfig -> T.Text -> IO ()
 select tcfg release = do
   let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
@@ -114,6 +117,20 @@ select tcfg release = do
     rcfg <- adlFromJsonFile' "release.json"
     callCommand (T.unpack (rc_startCommand rcfg))
 
+-- List the releases available for installation
+listReleases :: ToolConfig -> IO ()
+listReleases tcfg = do
+  env <- mkAwsEnv
+  let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
+      listObjectReq = set S3.loPrefix (Just bucketPath) (S3.listObjects bucketName)
+  runResourceT . runAWST env $ do
+    objects <- paginate listObjectReq $$ CL.foldMap (view S3.lorsContents)
+    let sortedObjects = reverse (sortOn (view S3.oLastModified) objects)
+    for_ sortedObjects $ \object ->
+      case (view S3.oKey object ^? S3.keyName '/') of
+        Nothing -> return ()
+        (Just package) -> liftIO (T.putStrLn package)
+
 -- Output the command line to docker login to access the default
 -- repository
 awsDockerLoginCmd :: ToolConfig -> IO ()
@@ -139,13 +156,13 @@ awsDockerLoginCmd tcfg = do
           Nothing -> endpoint
           (Just endpoint) -> endpoint
 
-downloadFileFromS3 :: Env -> BucketName -> ObjectKey -> FilePath -> Maybe Int -> IO ()
+downloadFileFromS3 :: Env -> S3.BucketName -> S3.ObjectKey -> FilePath -> Maybe Int -> IO ()
 downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter = do
   handling _ServiceError onServiceError $ do
     T.putStrLn ("Downloading s3://" <> toText bucketName <> "/" <> toText objectKey <> " to " <> T.pack toFilePath)
     runResourceT . runAWST env $ do
-      resp <- send (getObject bucketName objectKey)
-      liftResourceT (_streamBody (view gorsBody resp) $$+- sinkFile toFilePath)
+      resp <- send (S3.getObject bucketName objectKey)
+      liftResourceT (_streamBody (view S3.gorsBody resp) $$+- sinkFile toFilePath)
   where
    onServiceError :: ServiceError -> IO ()
    onServiceError se =
@@ -179,16 +196,17 @@ expandTemplateFile ctx templatePath = do
 mkAwsEnv :: IO Env
 mkAwsEnv = do
   env0 <- newEnv Discover
-  l <- newLogger Error stdout
-  return (env0 & envLogger .~ l)
+  logger <- newLogger Error stdout
+  putStrLn ("Using AWS region: " <> show (view envRegion env0))
+  return (env0 & envLogger .~ logger)
 
-splitS3Path :: T.Text -> (BucketName,ObjectKey)
+splitS3Path :: T.Text -> (S3.BucketName,S3.ObjectKey)
 splitS3Path s3Path = case T.stripPrefix "s3://" s3Path of
   Nothing -> error "s3Path must start with s3://"
   (Just s) ->
     case T.breakOn "/" s of
       (_,"") -> error "s3Path must include a key"
-      (b,k) -> (BucketName b,ObjectKey (T.tail k))
+      (b,k) -> (S3.BucketName b,S3.ObjectKey (T.tail k))
 
 toDirPath :: FilePath -> Path Abs Dir
 toDirPath path = case parseAbsDir path of

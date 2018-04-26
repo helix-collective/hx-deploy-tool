@@ -5,7 +5,7 @@ import qualified Data.Text as T
 
 import ADL.Config(ToolConfig(..))
 import ADL.Core(adlFromJsonFile')
-import Commands(fetchContext, select, unpack, awsDockerLoginCmd)
+import Commands(fetchContext, listReleases, select, unpack, awsDockerLoginCmd)
 import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
 import System.FilePath(takeDirectory, (</>))
@@ -15,6 +15,7 @@ usage :: IO ()
 usage = do
   putStrLn "Usage:"
   putStrLn "  hx-deploy-tool fetch-context [--retry]"
+  putStrLn "  hx-deploy-tool list-releases"
   putStrLn "  hx-deploy-tool unpack <releaseid> <todir>"
   putStrLn "  hx-deploy-tool select <releaseid>"
   putStrLn "  hx-deploy-tool aws-docker-login-cmd"
@@ -42,6 +43,9 @@ main = do
     ["fetch-context","--retry"] -> do
       config <- adlFromJsonFile' configPath
       fetchContext config (Just 10)
+    ["list-releases"] -> do
+      config <- adlFromJsonFile' configPath
+      listReleases config
     ["unpack", release, toDir] -> do
       config <- adlFromJsonFile' configPath
       unpack config (T.pack release) toDir
