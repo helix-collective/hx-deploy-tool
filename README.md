@@ -12,6 +12,7 @@ Usage:
   hx-deploy-tool list-releases
   hx-deploy-tool unpack <release> <todir>
   hx-deploy-tool select <release>
+  hx-deploy-tool show-log
   hx-deploy-tool aws-docker-login-cmd
 
 The config file is read from the file specified with HX_DEPLOY_CONFIG.
@@ -79,6 +80,10 @@ Specifically it:
  - stops the current release (if any)
  - starts the new release
  - switches the `current` symlink to point to the new release
+
+# hx-deploy-tool show-log
+
+Show the history of releases deployed via the select command.
 ```
 
 The tool is configured with an ADL specified json

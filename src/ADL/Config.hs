@@ -36,13 +36,14 @@ instance AdlValue DeployContextFile where
 data ToolConfig = ToolConfig
     { tc_releasesDir :: ADL.Types.FilePath
     , tc_contextCache :: ADL.Types.FilePath
+    , tc_logFile :: ADL.Types.FilePath
     , tc_releasesS3 :: ADL.Types.S3Path
     , tc_deployContextFiles :: [DeployContextFile]
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: ADL.Types.S3Path -> [DeployContextFile] -> ToolConfig
-mkToolConfig releasesS3 deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" releasesS3 deployContextFiles
+mkToolConfig releasesS3 deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" releasesS3 deployContextFiles
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -50,6 +51,7 @@ instance AdlValue ToolConfig where
     jsonGen = genObject
         [ genField "releasesDir" tc_releasesDir
         , genField "contextCache" tc_contextCache
+        , genField "logFile" tc_logFile
         , genField "releasesS3" tc_releasesS3
         , genField "deployContextFiles" tc_deployContextFiles
         ]
@@ -57,5 +59,6 @@ instance AdlValue ToolConfig where
     jsonParser = ToolConfig
         <$> parseFieldDef "releasesDir" "/opt/releases"
         <*> parseFieldDef "contextCache" "/opt/etc/deployment"
+        <*> parseFieldDef "logFile" "/opt/var/log/hx-deploy-tool.log"
         <*> parseField "releasesS3"
         <*> parseField "deployContextFiles"

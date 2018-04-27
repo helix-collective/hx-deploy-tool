@@ -13,6 +13,7 @@ struct DeployContextFile
 struct ToolConfig {
     FilePath releasesDir = "/opt/releases";
     FilePath contextCache = "/opt/etc/deployment";
+    FilePath logFile = "/opt/var/log/hx-deploy-tool.log";
     S3Path releasesS3;
     Vector<DeployContextFile> deployContextFiles;
 };

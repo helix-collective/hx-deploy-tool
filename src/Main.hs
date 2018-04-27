@@ -6,7 +6,7 @@ import qualified Data.Text.IO as T
 
 import ADL.Config(ToolConfig(..))
 import ADL.Core(adlFromJsonFile')
-import Commands(fetchContext, listReleases, select, unpack, awsDockerLoginCmd)
+import Commands(fetchContext, listReleases, select, unpack, awsDockerLoginCmd, showLog)
 import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
 import System.FilePath(takeDirectory, (</>))
@@ -20,6 +20,7 @@ usageText = "\
   \  hx-deploy-tool list-releases\n\
   \  hx-deploy-tool unpack <release> <todir>\n\
   \  hx-deploy-tool select <release>\n\
+  \  hx-deploy-tool show-log\n\
   \  hx-deploy-tool aws-docker-login-cmd\n\
   \\n\
   \The config file is read from the file specified with HX_DEPLOY_CONFIG.\n\
@@ -89,6 +90,11 @@ helpText = "\
   \ - stops the current release (if any)\n\
   \ - starts the new release\n\
   \ - switches the `current` symlink to point to the new release\n\
+  \\n\
+  \# hx-deploy-tool show-log\n\
+  \\n\
+  \Show the history of releases deployed via the select command.\n\
+  \\n\
   \"
 
 usage :: IO ()
@@ -130,6 +136,9 @@ main = do
     ["select", release] -> do
       config <- adlFromJsonFile' configPath
       select config (T.pack release)
+    ["show-log"] -> do
+      config <- adlFromJsonFile' configPath
+      showLog config
     ["aws-docker-login-cmd"] -> do
       config <- adlFromJsonFile' configPath
       awsDockerLoginCmd config

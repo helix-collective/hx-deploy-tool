@@ -32,11 +32,12 @@ import Data.Monoid
 import Data.Conduit((.|), ($$), ($$+-))
 import Data.Conduit.Binary(sinkFile)
 import Data.Foldable(for_)
+import Data.Time.Clock.POSIX(getCurrentTime)
 import Data.Traversable(for)
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory)
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Posix.Files(createSymbolicLink, removeLink)
-import System.IO(stdout)
+import System.IO(stdout, withFile, hIsEOF, IOMode(..))
 import System.Process(callProcess,callCommand)
 import Network.AWS.Data.Body(RsBody(..))
 import Network.AWS.Data.Text(ToText(..))
@@ -85,6 +86,9 @@ select :: ToolConfig -> T.Text -> IO ()
 select tcfg release = do
   let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
   let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
+
+  -- Log the request
+  logMessage tcfg ("Selecting release " <> release)
 
   -- Fetch the context in case it has been updated
   fetchContext tcfg Nothing
@@ -156,6 +160,18 @@ awsDockerLoginCmd tcfg = do
           Nothing -> endpoint
           (Just endpoint) -> endpoint
 
+-- dump the log file
+showLog :: ToolConfig -> IO ()
+showLog tcfg = do
+  let logFile = T.unpack (tc_logFile tcfg)
+  withFile logFile ReadMode $ \h -> nextLine h
+  where
+    nextLine h = do
+      eof <- hIsEOF h
+      when (not eof) $ do
+        T.hGetLine h >>= T.putStrLn
+        nextLine h
+
 downloadFileFromS3 :: Env -> S3.BucketName -> S3.ObjectKey -> FilePath -> Maybe Int -> IO ()
 downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter = do
   handling _ServiceError onServiceError $ do
@@ -217,3 +233,12 @@ toFilePath :: FilePath -> Path Abs File
 toFilePath path = case parseAbsFile path of
   Just p -> p
   Nothing -> error "Unable to parse directory"
+
+-- crude and slow function to write a line to the log file
+logMessage :: ToolConfig -> T.Text -> IO ()
+logMessage tcfg message = do
+  now <- getCurrentTime
+  let logFile = T.unpack (tc_logFile tcfg)
+      ltext = T.pack (show now) <> ": " <> message <> "\n"
+  createDirectoryIfMissing True (takeDirectory logFile)
+  T.appendFile logFile ltext
