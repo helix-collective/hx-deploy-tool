@@ -213,7 +213,6 @@ mkAwsEnv :: IO Env
 mkAwsEnv = do
   env0 <- newEnv Discover
   logger <- newLogger Error stdout
-  putStrLn ("Using AWS region: " <> show (view envRegion env0))
   return (env0 & envLogger .~ logger)
 
 splitS3Path :: T.Text -> (S3.BucketName,S3.ObjectKey)
