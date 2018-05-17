@@ -3,9 +3,10 @@ module Main where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Commands.LetsEncrypt as LE
 
-import ADL.Config(ToolConfig(..))
-import ADL.Core(adlFromJsonFile')
+import ADL.Config(ToolConfig(..), LetsEncryptConfig(..))
+import ADL.Core(adlFromJsonFile', AdlValue)
 import Commands(fetchContext, listReleases, select, unpack, awsDockerLoginCmd, showLog)
 import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
@@ -14,7 +15,7 @@ import System.Posix.Files(fileExist)
 
 usageText :: T.Text
 usageText = "\
-  \Usage:\n\
+  \Deployment Usage:\n\
   \  hx-deploy-tool help\n\
   \  hx-deploy-tool fetch-context [--retry]\n\
   \  hx-deploy-tool list-releases\n\
@@ -25,6 +26,12 @@ usageText = "\
   \\n\
   \The config file is read from the file specified with HX_DEPLOY_CONFIG.\n\
   \It defaults to ../etc/hx-deploy-tool.json (relative to the executable).\n\
+  \\n\
+  \Cert Generation Usage:\n\
+  \  hx-deploy-tool le-get-certs\n\
+  \\n\
+  \The config file is read from the file specified with HX_LETSENCRYPT_CONFIG.\n\
+  \It defaults to ../etc/hx-letsencrypt.json (relative to the executable).\n\
   \"
 
 helpText :: T.Text
@@ -95,6 +102,10 @@ helpText = "\
   \\n\
   \Show the history of releases deployed via the select command.\n\
   \\n\
+  \# hx-deploy-tool le-get-certs\n\
+  \\n\
+  \Use the letsencrypt service to obtain or renew SSL certificates\n\
+  \\n\
   \"
 
 usage :: IO ()
@@ -105,43 +116,61 @@ help :: IO ()
 help = do
   T.putStrLn helpText
 
-getConfigPath :: IO FilePath
-getConfigPath = do
-  mConfigPath <- lookupEnv "HX_DEPLOY_CONFIG"
-  case mConfigPath of
+-- fetch an ADL config file, either from the path in the
+-- given environment variable, or from a prefix relative
+-- default path.
+getConfig :: (AdlValue a) => String -> FilePath -> IO a
+getConfig envVarName pathFromPrefix = do
+  mEnvPath <- lookupEnv envVarName
+  configPath <- case mEnvPath of
    (Just configPath) -> return configPath
    Nothing -> do
      exePath <- getExecutablePath
-     return (takeDirectory (takeDirectory exePath) </> "etc/hx-deploy-tool.json")
+     return (takeDirectory (takeDirectory exePath) </> pathFromPrefix )
+  adlFromJsonFile' configPath
+
+getToolConfig :: IO ToolConfig
+getToolConfig = getConfig "HX_DEPLOY_CONFIG" "etc/hx-deploy-tool.json"
+
+getLetsEncryptConfig :: IO LetsEncryptConfig
+getLetsEncryptConfig = getConfig "HX_LETSENCRYPT_CONFIG" "etc/hx-letsencrypt.json"
 
 main :: IO ()
 main = do
   args <- getArgs
-  configPath <- getConfigPath
   case args of
     ["help"] -> do
       help
     ["fetch-context"] -> do
-      config <- adlFromJsonFile' configPath
+      config <- getToolConfig
       fetchContext config Nothing
     ["fetch-context","--retry"] -> do
-      config <- adlFromJsonFile' configPath
+      config <- getToolConfig
       fetchContext config (Just 10)
     ["list-releases"] -> do
-      config <- adlFromJsonFile' configPath
+      config <- getToolConfig
       listReleases config
     ["unpack", release, toDir] -> do
-      config <- adlFromJsonFile' configPath
+      config <- getToolConfig
       unpack config (T.pack release) toDir
     ["select", release] -> do
-      config <- adlFromJsonFile' configPath
+      config <- getToolConfig
       select config (T.pack release)
     ["show-log"] -> do
-      config <- adlFromJsonFile' configPath
+      config <- getToolConfig
       showLog config
     ["aws-docker-login-cmd"] -> do
-      config <- adlFromJsonFile' configPath
+      config <- getToolConfig
       awsDockerLoginCmd config
+    ["le-get-certs"] -> do
+      config <- getLetsEncryptConfig
+      LE.getCerts config
+    ["le-auth-hook"] -> do
+      config <- getLetsEncryptConfig
+      LE.authHook config
+    ["le-cleanup-hook"] -> do
+      config <- getLetsEncryptConfig
+      LE.cleanupHook config
     _ -> do
       usage
-      exitWith (ExitFailure 1)
+      exitWith (ExitFailure 10)

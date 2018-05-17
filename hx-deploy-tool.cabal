@@ -22,13 +22,15 @@ executable hx-deploy-tool
                      , ADL.Release
                      , ADL.Types
                      , Commands
+                     , Commands.LetsEncrypt
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , aeson >= 1.0 && < 1.3
                      , amazonka >= 1.4 && < 1.6
                      , amazonka-core >= 1.4 && < 1.6
-                     , amazonka-s3 >= 1.4 && < 1.6
                      , amazonka-ecr >= 1.4 && < 1.6
+                     , amazonka-route53 >= 1.4.5 && < 1.6
+                     , amazonka-s3 >= 1.4 && < 1.6
                      , base64-bytestring >= 1.0 && < 1.1
                      , bytestring >= 0.10 && < 0.11
                      , conduit >= 1.2.9 && < 1.4

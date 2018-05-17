@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     DeployContextFile(..),
+    LetsEncryptConfig(..),
     ToolConfig(..),
+    Verbosity(..),
 ) where
 
 import ADL.Core
@@ -10,6 +12,7 @@ import qualified ADL.Types
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Proxy
+import qualified Data.Text as T
 import qualified Prelude
 
 data DeployContextFile = DeployContextFile
@@ -32,6 +35,39 @@ instance AdlValue DeployContextFile where
     jsonParser = DeployContextFile
         <$> parseField "name"
         <*> parseField "source"
+
+data LetsEncryptConfig = LetsEncryptConfig
+    { lec_certbotPath :: T.Text
+    , lec_awsHostedZoneId :: T.Text
+    , lec_basedir :: T.Text
+    , lec_email :: T.Text
+    , lec_domains :: [T.Text]
+    , lec_verbosity :: Verbosity
+    }
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+mkLetsEncryptConfig :: T.Text -> T.Text -> T.Text -> T.Text -> [T.Text] -> LetsEncryptConfig
+mkLetsEncryptConfig certbotPath awsHostedZoneId basedir email domains = LetsEncryptConfig certbotPath awsHostedZoneId basedir email domains Verbosity_quiet
+
+instance AdlValue LetsEncryptConfig where
+    atype _ = "config.LetsEncryptConfig"
+    
+    jsonGen = genObject
+        [ genField "certbotPath" lec_certbotPath
+        , genField "awsHostedZoneId" lec_awsHostedZoneId
+        , genField "basedir" lec_basedir
+        , genField "email" lec_email
+        , genField "domains" lec_domains
+        , genField "verbosity" lec_verbosity
+        ]
+    
+    jsonParser = LetsEncryptConfig
+        <$> parseField "certbotPath"
+        <*> parseField "awsHostedZoneId"
+        <*> parseField "basedir"
+        <*> parseField "email"
+        <*> parseField "domains"
+        <*> parseFieldDef "verbosity" Verbosity_quiet
 
 data ToolConfig = ToolConfig
     { tc_releasesDir :: ADL.Types.FilePath
@@ -62,3 +98,21 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "logFile" "/opt/var/log/hx-deploy-tool.log"
         <*> parseField "releasesS3"
         <*> parseField "deployContextFiles"
+
+data Verbosity
+    = Verbosity_quiet
+    | Verbosity_noisy
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue Verbosity where
+    atype _ = "config.Verbosity"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        Verbosity_quiet -> genUnionVoid "quiet"
+        Verbosity_noisy -> genUnionVoid "noisy"
+        )
+    
+    jsonParser
+        =   parseUnionVoid "quiet" Verbosity_quiet
+        <|> parseUnionVoid "noisy" Verbosity_noisy
+        <|> parseFail "expected a Verbosity"

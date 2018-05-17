@@ -4,4 +4,5 @@ import adlc.config.haskell.HaskellFieldPrefix;
 
 annotation DeployContextFile HaskellFieldPrefix "dcf_";
 annotation ToolConfig HaskellFieldPrefix "tc_";
+annotation LetsEncryptConfig HaskellFieldPrefix "lec_";
 };
