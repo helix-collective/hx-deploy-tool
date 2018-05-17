@@ -31,7 +31,7 @@ usageText = "\
   \  hx-deploy-tool le-get-certs\n\
   \\n\
   \The config file is read from the file specified with HX_LETSENCRYPT_CONFIG.\n\
-  \It defaults to ../etc/hx-letsencrypt.json (relative to the executable).\n\
+  \It defaults to ../etc/letsencrypt-aws.json (relative to the executable).\n\
   \"
 
 helpText :: T.Text
@@ -133,7 +133,7 @@ getToolConfig :: IO ToolConfig
 getToolConfig = getConfig "HX_DEPLOY_CONFIG" "etc/hx-deploy-tool.json"
 
 getLetsEncryptConfig :: IO LetsEncryptConfig
-getLetsEncryptConfig = getConfig "HX_LETSENCRYPT_CONFIG" "etc/hx-letsencrypt.json"
+getLetsEncryptConfig = getConfig "HX_LETSENCRYPT_CONFIG" "etc/letsencrypt-aws.json"
 
 main :: IO ()
 main = do
