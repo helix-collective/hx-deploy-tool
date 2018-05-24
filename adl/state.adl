@@ -1,0 +1,27 @@
+module state {
+
+import sys.types.Map;
+import sys.types.Maybe;
+import types.EndPointLabel;
+import types.DeployLabel;
+
+// The system state stored to manage multiple deploys with
+// a proxy for live switching between them and, where specified, SSL
+// termination.
+
+struct State {
+  // Live deployments
+  StringMap<Deploy> deploys;
+
+  // Connections between the configured endpoints and deployments
+  StringMap<DeployLabel> connections;
+};
+
+// A running deployed system
+struct Deploy {
+  DeployLabel label;
+  String release;
+  Word32 port;
+};
+
+};

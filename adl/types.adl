@@ -5,4 +5,8 @@ type FilePath = String;
 
 type S3Path = String;
 
+type EndPointLabel = String;
+
+type DeployLabel = String;
+
 };

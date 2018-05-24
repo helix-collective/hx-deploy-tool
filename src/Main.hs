@@ -4,14 +4,17 @@ module Main where
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Commands.LetsEncrypt as LE
+import qualified Commands.ProxyMode as P
+import qualified Commands as C
 
 import ADL.Config(ToolConfig(..), LetsEncryptConfig(..))
 import ADL.Core(adlFromJsonFile', AdlValue)
-import Commands(fetchContext, listReleases, select, unpack, awsDockerLoginCmd, showLog)
+import Control.Monad.Reader(runReaderT)
 import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
 import System.FilePath(takeDirectory, (</>))
 import System.Posix.Files(fileExist)
+import Types(REnv(..),IOR)
 
 usageText :: T.Text
 usageText = "\
@@ -139,29 +142,20 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    ["help"] -> do
-      help
-    ["fetch-context"] -> do
-      config <- getToolConfig
-      fetchContext config Nothing
-    ["fetch-context","--retry"] -> do
-      config <- getToolConfig
-      fetchContext config (Just 10)
-    ["list-releases"] -> do
-      config <- getToolConfig
-      listReleases config
-    ["unpack", release, toDir] -> do
-      config <- getToolConfig
-      unpack config (T.pack release) toDir
-    ["select", release] -> do
-      config <- getToolConfig
-      select config (T.pack release)
-    ["show-log"] -> do
-      config <- getToolConfig
-      showLog config
-    ["aws-docker-login-cmd"] -> do
-      config <- getToolConfig
-      awsDockerLoginCmd config
+    ["help"]                            -> help
+    ["fetch-context"]                   -> runWithConfig (C.fetchContext Nothing)
+    ["fetch-context","--retry"]         -> runWithConfig (C.fetchContext (Just 10))
+    ["list-releases"]                   -> runWithConfig (C.listReleases)
+    ["unpack", release, toDir]          -> runWithConfig (C.unpackRelease' (T.pack release) toDir)
+    ["select", release]                 -> runWithConfig (C.select (T.pack release))
+    ["show-log"]                        -> runWithConfig (C.showLog)
+    ["aws-docker-login-cmd"]            -> runWithConfig (C.awsDockerLoginCmd)
+    ["proxy-status"]                    -> runWithConfig (P.showStatus)
+    ["proxy-deploy", release]           -> runWithConfig (P.deploy (T.pack release))
+    ["proxy-undeploy", deploy]          -> runWithConfig (P.undeploy (T.pack deploy))
+    ["proxy-connect", endpoint, deploy] -> runWithConfig (P.connect (T.pack endpoint) (T.pack deploy))
+    ["proxy-disconnect", endpoint]      -> runWithConfig (P.disconnect (T.pack endpoint))
+
     ["le-get-certs"] -> do
       config <- getLetsEncryptConfig
       LE.getCerts config
@@ -174,3 +168,8 @@ main = do
     _ -> do
       usage
       exitWith (ExitFailure 10)
+
+runWithConfig :: IOR a -> IO a
+runWithConfig ma = do
+  config <- getToolConfig
+  runReaderT ma (REnv config)

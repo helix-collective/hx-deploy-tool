@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     DeployContextFile(..),
+    EndPoint(..),
+    EndPointType(..),
     LetsEncryptConfig(..),
     ToolConfig(..),
     Verbosity(..),
@@ -8,11 +10,14 @@ module ADL.Config(
 
 import ADL.Core
 import Control.Applicative( (<$>), (<*>), (<|>) )
+import qualified ADL.Sys.Types
 import qualified ADL.Types
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Map as M
 import qualified Data.Proxy
 import qualified Data.Text as T
+import qualified Data.Word
 import qualified Prelude
 
 data DeployContextFile = DeployContextFile
@@ -35,6 +40,51 @@ instance AdlValue DeployContextFile where
     jsonParser = DeployContextFile
         <$> parseField "name"
         <*> parseField "source"
+
+data EndPoint = EndPoint
+    { ep_label :: ADL.Types.EndPointLabel
+    , ep_serverName :: T.Text
+    , ep_sslCertDir :: T.Text
+    , ep_etype :: EndPointType
+    }
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+mkEndPoint :: ADL.Types.EndPointLabel -> T.Text -> T.Text -> EndPointType -> EndPoint
+mkEndPoint label serverName sslCertDir etype = EndPoint label serverName sslCertDir etype
+
+instance AdlValue EndPoint where
+    atype _ = "config.EndPoint"
+    
+    jsonGen = genObject
+        [ genField "label" ep_label
+        , genField "serverName" ep_serverName
+        , genField "sslCertDir" ep_sslCertDir
+        , genField "etype" ep_etype
+        ]
+    
+    jsonParser = EndPoint
+        <$> parseField "label"
+        <*> parseField "serverName"
+        <*> parseField "sslCertDir"
+        <*> parseField "etype"
+
+data EndPointType
+    = Ep_httpOnly
+    | Ep_httpsWithRedirect
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue EndPointType where
+    atype _ = "config.EndPointType"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        Ep_httpOnly -> genUnionVoid "httpOnly"
+        Ep_httpsWithRedirect -> genUnionVoid "httpsWithRedirect"
+        )
+    
+    jsonParser
+        =   parseUnionVoid "httpOnly" Ep_httpOnly
+        <|> parseUnionVoid "httpsWithRedirect" Ep_httpsWithRedirect
+        <|> parseFail "expected a EndPointType"
 
 data LetsEncryptConfig = LetsEncryptConfig
     { lec_certbotPath :: T.Text
@@ -75,11 +125,13 @@ data ToolConfig = ToolConfig
     , tc_logFile :: ADL.Types.FilePath
     , tc_releasesS3 :: ADL.Types.S3Path
     , tc_deployContextFiles :: [DeployContextFile]
+    , tc_endPoints :: StringMap (EndPoint)
+    , tc_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: ADL.Types.S3Path -> [DeployContextFile] -> ToolConfig
-mkToolConfig releasesS3 deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" releasesS3 deployContextFiles
+mkToolConfig releasesS3 deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" releasesS3 deployContextFiles (stringMapFromList []) ((,) 8000 8100)
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -90,6 +142,8 @@ instance AdlValue ToolConfig where
         , genField "logFile" tc_logFile
         , genField "releasesS3" tc_releasesS3
         , genField "deployContextFiles" tc_deployContextFiles
+        , genField "endPoints" tc_endPoints
+        , genField "dynamicPortRange" tc_dynamicPortRange
         ]
     
     jsonParser = ToolConfig
@@ -98,6 +152,8 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "logFile" "/opt/var/log/hx-deploy-tool.log"
         <*> parseField "releasesS3"
         <*> parseField "deployContextFiles"
+        <*> parseFieldDef "endPoints" (stringMapFromList [])
+        <*> parseFieldDef "dynamicPortRange" ((,) 8000 8100)
 
 data Verbosity
     = Verbosity_quiet

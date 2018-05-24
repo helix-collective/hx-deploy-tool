@@ -2,12 +2,9 @@ module config
 {
 import types.FilePath;
 import types.S3Path;
-
-struct DeployContextFile
-{
-    FilePath name;
-    S3Path source;
-};
+import types.EndPointLabel;
+import sys.types.Map;
+import sys.types.Pair;
 
 /// Configuration file for the deployment tool
 struct ToolConfig {
@@ -16,6 +13,28 @@ struct ToolConfig {
     FilePath logFile = "/opt/var/log/hx-deploy-tool.log";
     S3Path releasesS3;
     Vector<DeployContextFile> deployContextFiles;
+    StringMap<EndPoint> endPoints = {};
+    Pair<Word32,Word32> dynamicPortRange = {"v1":8000, "v2":8100};
+};
+
+
+// A proxy exposed endpoint
+struct EndPoint {
+  EndPointLabel label;
+  String serverName;
+  String sslCertDir;
+  EndPointType etype;
+};
+
+union EndPointType {
+  Void httpOnly;
+  Void httpsWithRedirect;
+};
+
+struct DeployContextFile
+{
+    FilePath name;
+    S3Path source;
 };
 
 union Verbosity

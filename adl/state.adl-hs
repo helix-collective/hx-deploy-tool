@@ -1,0 +1,7 @@
+module state
+{
+import adlc.config.haskell.HaskellFieldPrefix;
+
+annotation State HaskellFieldPrefix "s_";
+annotation Deploy HaskellFieldPrefix "d_";
+};
