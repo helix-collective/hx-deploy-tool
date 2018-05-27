@@ -1,5 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Commands.ProxyMode where
+module Commands.ProxyMode(
+  showStatus,
+  deploy,
+  undeploy,
+  connect,
+  disconnect
+  ) where
 
 import qualified ADL.Core.StringMap as SM
 import qualified Data.Aeson as JS
@@ -15,7 +21,7 @@ import ADL.Release(ReleaseConfig(..))
 import ADL.Config(ToolConfig(..), DeployContextFile(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
-import Commands(unpackRelease, fetchContext)
+import Commands(unpackRelease, fetchDeployContext)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
 import Data.List(find)
@@ -28,7 +34,7 @@ import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Process(callProcess,callCommand)
 import Types(IOR, REnv(..), getToolConfig)
 
--- | Show the deploys running behind the proxy
+-- | Show the proxy system status, specifically the endpoints and live deploys.
 showStatus :: IOR ()
 showStatus = do
   checkProxyEnabled
@@ -56,11 +62,10 @@ deploy release = do
   tcfg <- getToolConfig
   state <- getState
 
-  -- Fetch config in case it has been updated
-  fetchContext Nothing
+  fetchDeployContext Nothing
 
   port <- liftIO $ allocatePort tcfg state
-  updateState (stepAction (createDeploy port))
+  updateState (nextState (createDeploy port))
   where
     createDeploy port = (CreateDeploy (Deploy release release port))
 
@@ -72,7 +77,7 @@ undeploy release = do
   deploy <- case SM.lookup release (s_deploys state) of
     Nothing -> error (T.unpack ("no deploy called " <> release))
     Just deploy -> return deploy
-  updateState (stepAction (DestroyDeploy deploy))
+  updateState (nextState (DestroyDeploy deploy))
 
 -- | Connect an endpoint to a running deployment
 connect :: T.Text -> T.Text -> IOR ()
@@ -99,14 +104,41 @@ disconnect endPointLabel = do
     Just endPoint -> return ()
   updateState (\s -> s{s_connections=SM.delete endPointLabel (s_connections s)})
 
+----------------------------------------------------------------------
+-- The code below implements state changes of the proxy, with their
+-- associated side effects.
+--
+-- The code has been structured to support the future use case where
+-- we store a single master copy of the target proxy state. EC2
+-- instances will periodically poll this target state, and work out
+-- the actions required to update their local state accordingly.
+
+-- | Execute all necessary actions (with their effects) to update the proxy state.
+updateState :: (State -> State) -> IOR ()
+updateState newStateFn = do
+  stateFile <- getStateFile
+  state <- getState
+  tcfg <- getToolConfig
+  let newState = newStateFn state
+  mapM_ (runAction stateFile) (stateUpdateActions (SM.toMap (tc_endPoints tcfg)) state newState)
+  where
+    runAction stateFile action = do
+      state <- getState
+      executeAction action
+      liftIO $ adlToJsonFile stateFile (nextState action state)
+
+
+-- | The actions we can apply to change the state
 data StateAction
   = CreateDeploy Deploy
   | DestroyDeploy Deploy
   | SetEndPoints [(EndPoint,Deploy)]
 
--- | Genenerate the necessary actions to switch from oldState to newState
-stateChangeActions :: M.Map EndPointLabel EndPoint -> State -> State -> [StateAction]
-stateChangeActions endPoints oldState newState
+
+-- | Compute the difference between oldState and newState, and express this as a list
+-- of actions to update the old state
+stateUpdateActions :: M.Map EndPointLabel EndPoint -> State -> State -> [StateAction]
+stateUpdateActions endPoints oldState newState
   =  map CreateDeploy deploysToCreate
   <> concatMap updateDeploy deploysToUpdate
   <> [SetEndPoints endpoints']
@@ -125,13 +157,15 @@ stateChangeActions endPoints oldState newState
       deploy <- find (\d -> d_label d == dlabel) (SM.toMap (s_deploys newState))
       return (endPoint,deploy)
 
--- | Update the state with the effect of an action
-stepAction :: StateAction -> State -> State
-stepAction (CreateDeploy d) s = s{s_deploys=SM.insert (d_label d) d (s_deploys s)}
-stepAction (DestroyDeploy d) s = s{s_deploys= SM.delete (d_label d) (s_deploys s)}
-stepAction (SetEndPoints eps) s = s{s_connections=SM.fromList [ (ep_label ep, d_label d) | (ep,d) <- eps ]}
 
--- | Execute an action
+-- | Update the state with the effect of an action
+nextState :: StateAction -> State -> State
+nextState (CreateDeploy d) s = s{s_deploys=SM.insert (d_label d) d (s_deploys s)}
+nextState (DestroyDeploy d) s = s{s_deploys= SM.delete (d_label d) (s_deploys s)}
+nextState (SetEndPoints eps) s = s{s_connections=SM.fromList [ (ep_label ep, d_label d) | (ep,d) <- eps ]}
+
+
+-- | Execute the effects of a single action action
 executeAction :: StateAction -> IOR ()
 
 executeAction (CreateDeploy d) = do
@@ -169,20 +203,6 @@ executeAction (SetEndPoints eps) = do
       -- Signal it to reload its configuration"
       callCommand "docker kill --signal=SIGHUP frontendproxy"
 
-
--- | Update the proxy state, running all necessary actions
-updateState :: (State -> State) -> IOR ()
-updateState newStateFn = do
-  stateFile <- getStateFile
-  state <- getState
-  tcfg <- getToolConfig
-  let newState = newStateFn state
-  mapM_ (runAction stateFile) (stateChangeActions (SM.toMap (tc_endPoints tcfg)) state newState)
-  where
-    runAction stateFile action = do
-      state <- getState
-      executeAction action
-      liftIO $ adlToJsonFile stateFile (stepAction action state)
 
 getState :: IOR State
 getState = do

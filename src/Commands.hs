@@ -46,8 +46,8 @@ import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig)
 
 --- Download the infrastructure context files from S3
-fetchContext :: Maybe Int -> IOR ()
-fetchContext retryAfter = do
+fetchDeployContext :: Maybe Int -> IOR ()
+fetchDeployContext retryAfter = do
   tcfg <- getToolConfig
   liftIO $ do
     let cacheDir = T.unpack (tc_contextCache tcfg)
@@ -99,7 +99,7 @@ select release = do
   let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
 
   -- Fetch the context in case it has been updated
-  fetchContext Nothing
+  fetchDeployContext Nothing
 
   liftIO $ do
     logMessage tcfg ("Selecting release " <> release)
