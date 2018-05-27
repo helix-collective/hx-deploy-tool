@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, Rank2Types #-}
 module Commands where
 
+import qualified ADL.Core.StringMap as SM
 import qualified Data.Aeson as JS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Base64 as B64
@@ -95,6 +96,9 @@ unpackRelease' = unpackRelease id
 select :: T.Text -> IOR ()
 select release = do
   tcfg <- getToolConfig
+  case SM.elems (tc_endPoints tcfg) of
+    [] -> return ()
+    _ -> error "The select command is not allowed when the proxy is enabled"
   let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
   let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
 
