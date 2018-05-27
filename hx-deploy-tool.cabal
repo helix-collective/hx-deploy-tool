@@ -13,6 +13,8 @@ build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
 
+data-files:          doc/help.md
+
 executable hx-deploy-tool
   hs-source-dirs:      src
   main-is:             Main.hs
@@ -27,6 +29,7 @@ executable hx-deploy-tool
                      , Commands
                      , Commands.LetsEncrypt
                      , Commands.ProxyMode
+                     , HelpText
                      , Types
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
@@ -44,6 +47,7 @@ executable hx-deploy-tool
                      , directory >= 1.3 && < 1.4
                      , exceptions >= 0.8.3 && < 0.9
                      , filepath >= 1.4 && < 1.5
+                     , file-embed >= 0.0.10.1 && < 0.0.11
                      , http-types >= 0.9.1 && < 0.13
                      , lens >= 4.15 && < 4.17
                      , mustache >= 2.0 && < 2.4
