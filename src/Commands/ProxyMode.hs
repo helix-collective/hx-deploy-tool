@@ -77,6 +77,9 @@ undeploy release = do
     deploy <- case SM.lookup release (s_deploys state) of
       Nothing -> error (T.unpack ("no deploy called " <> release))
       Just deploy -> return deploy
+    case find ((==release).snd) (SM.toList (s_connections state)) of
+      Just (endpointLabel,_) -> error (T.unpack ("deploy is connected to " <> endpointLabel))
+      Nothing -> return ()
     updateState (nextState (DestroyDeploy deploy))
 
 -- | Connect an endpoint to a running deployment
