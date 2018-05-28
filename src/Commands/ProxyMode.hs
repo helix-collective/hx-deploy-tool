@@ -31,8 +31,8 @@ import Data.Monoid
 import Data.Word
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory, removeDirectoryRecursive)
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
-import System.Process(callProcess,callCommand)
-import Types(IOR, REnv(..), getToolConfig)
+import System.Process(callCommand)
+import Types(IOR, REnv(..), getToolConfig, scopeInfo)
 
 -- | Show the proxy system status, specifically the endpoints and live deploys.
 showStatus :: IOR ()
@@ -58,51 +58,53 @@ showStatus = do
 -- | Create and start a deployment (if it's not already running)
 deploy :: T.Text -> IOR ()
 deploy release = do
-  checkProxyEnabled
-  tcfg <- getToolConfig
-  state <- getState
-
-  fetchDeployContext Nothing
-
-  port <- liftIO $ allocatePort tcfg state
-  updateState (nextState (createDeploy port))
+  scopeInfo ("Creating deploy " <> release) $ do
+    checkProxyEnabled
+    tcfg <- getToolConfig
+    state <- getState
+    fetchDeployContext Nothing
+    port <- liftIO $ allocatePort tcfg state
+    updateState (nextState (createDeploy port))
   where
     createDeploy port = (CreateDeploy (Deploy release release port))
 
 -- | Stop and remove a deployment
 undeploy :: T.Text -> IOR ()
 undeploy release = do
-  checkProxyEnabled
-  state <- getState
-  deploy <- case SM.lookup release (s_deploys state) of
-    Nothing -> error (T.unpack ("no deploy called " <> release))
-    Just deploy -> return deploy
-  updateState (nextState (DestroyDeploy deploy))
+  scopeInfo ("Removing deploy " <> release) $ do
+    checkProxyEnabled
+    state <- getState
+    deploy <- case SM.lookup release (s_deploys state) of
+      Nothing -> error (T.unpack ("no deploy called " <> release))
+      Just deploy -> return deploy
+    updateState (nextState (DestroyDeploy deploy))
 
 -- | Connect an endpoint to a running deployment
 connect :: T.Text -> T.Text -> IOR ()
 connect endPointLabel deployLabel = do
-  checkProxyEnabled
-  tcfg <- getToolConfig
-  state <- getState
-  case SM.lookup deployLabel (s_deploys state) of
-    Nothing -> error (T.unpack ("no deploy called " <> deployLabel))
-    Just deploy -> return ()
-  case SM.lookup endPointLabel (tc_endPoints tcfg) of
-    Nothing -> error (T.unpack ("no endpoint called " <> endPointLabel))
-    Just endPoint -> return ()
-  updateState (\s -> s{s_connections=SM.insert endPointLabel deployLabel (s_connections s)})
+  scopeInfo ("Connecting endpoint " <> endPointLabel <> " to " <> deployLabel) $ do
+    checkProxyEnabled
+    tcfg <- getToolConfig
+    state <- getState
+    case SM.lookup deployLabel (s_deploys state) of
+      Nothing -> error (T.unpack ("no deploy called " <> deployLabel))
+      Just deploy -> return ()
+    case SM.lookup endPointLabel (tc_endPoints tcfg) of
+      Nothing -> error (T.unpack ("no endpoint called " <> endPointLabel))
+      Just endPoint -> return ()
+    updateState (\s -> s{s_connections=SM.insert endPointLabel deployLabel (s_connections s)})
 
 -- | Disconnect an endpoint
 disconnect :: T.Text -> IOR ()
 disconnect endPointLabel = do
-  checkProxyEnabled
-  tcfg <- getToolConfig
-  state <- getState
-  case SM.lookup endPointLabel (tc_endPoints tcfg) of
-    Nothing -> error (T.unpack ("no endpoint called " <> endPointLabel))
-    Just endPoint -> return ()
-  updateState (\s -> s{s_connections=SM.delete endPointLabel (s_connections s)})
+  scopeInfo ("Disconnecting endpoint " <> endPointLabel) $ do
+    checkProxyEnabled
+    tcfg <- getToolConfig
+    state <- getState
+    case SM.lookup endPointLabel (tc_endPoints tcfg) of
+      Nothing -> error (T.unpack ("no endpoint called " <> endPointLabel))
+      Just endPoint -> return ()
+    updateState (\s -> s{s_connections=SM.delete endPointLabel (s_connections s)})
 
 ----------------------------------------------------------------------
 -- The code below implements state changes of the proxy, with their
@@ -138,22 +140,23 @@ data StateAction
 -- | Compute the difference between oldState and newState, and express this as a list
 -- of actions to update the old state
 stateUpdateActions :: M.Map EndPointLabel EndPoint -> State -> State -> [StateAction]
-stateUpdateActions endPoints oldState newState
+stateUpdateActions endPointMap oldState newState
   =  map CreateDeploy deploysToCreate
   <> concatMap updateDeploy deploysToUpdate
-  <> [SetEndPoints endpoints']
+  <> if newEndPoints /= oldEndPoints then [SetEndPoints newEndPoints] else []
   <> map DestroyDeploy deploysToDestroy
   where
     oldDeploys = SM.toMap (s_deploys oldState)
     newDeploys = SM.toMap (s_deploys newState)
-    endpoints' = (catMaybes . map getEndpointDeploy . SM.toList) (s_connections newState)
+    oldEndPoints = (catMaybes . map getEndpointDeploy . SM.toList) (s_connections oldState)
+    newEndPoints = (catMaybes . map getEndpointDeploy . SM.toList) (s_connections newState)
     deploysToCreate = M.elems (M.difference newDeploys oldDeploys)
     deploysToUpdate = filter (\(d1,d2) -> d1 /= d2) (M.elems (M.intersectionWith (\d1 d2 -> (d1,d2)) oldDeploys newDeploys))
     deploysToDestroy = M.elems (M.difference oldDeploys newDeploys)
     updateDeploy (d1,d2) = [DestroyDeploy d1, CreateDeploy d2]
     getEndpointDeploy :: (EndPointLabel,DeployLabel) -> Maybe (EndPoint,Deploy)
     getEndpointDeploy (eplabel, dlabel) = do
-      endPoint <- find (\ep -> ep_label ep == eplabel)  endPoints
+      endPoint <- find (\ep -> ep_label ep == eplabel)  endPointMap
       deploy <- find (\d -> d_label d == dlabel) (SM.toMap (s_deploys newState))
       return (endPoint,deploy)
 
@@ -169,40 +172,33 @@ nextState (SetEndPoints eps) s = s{s_connections=SM.fromList [ (ep_label ep, d_l
 executeAction :: StateAction -> IOR ()
 
 executeAction (CreateDeploy d) = do
-  tcfg <- getToolConfig
-  let deployDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
-  liftIO $ createDirectoryIfMissing True deployDir
-  unpackRelease (contextWithLocalPorts tcfg (d_port d)) (d_release d) deployDir
+  scopeInfo "execute CreateDeploy" $ do
+    tcfg <- getToolConfig
+    let deployDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
+    liftIO $ createDirectoryIfMissing True deployDir
+    unpackRelease (contextWithLocalPorts tcfg (d_port d)) (d_release d) deployDir
 
-  -- Start it up
-  liftIO $ withCurrentDirectory deployDir $ do
-    rcfg <- adlFromJsonFile' "release.json"
-    callCommand (T.unpack (rc_prestartCommand rcfg))
-    callCommand (T.unpack (rc_startCommand rcfg))
+    -- Start it up
+    rcfg <- getReleaseConfig deployDir
+    scopeInfo "running prestart script" $ callCommandInDir deployDir (rc_prestartCommand rcfg)
+    scopeInfo "running start script" $ callCommandInDir deployDir (rc_startCommand rcfg)
 
 executeAction (DestroyDeploy d) = do
-  tcfg <- getToolConfig
-  let deployDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
-  liftIO $ do
-    -- stop the release
-    withCurrentDirectory deployDir $ do
-      rcfg <- adlFromJsonFile' "release.json"
-      callCommand (T.unpack (rc_stopCommand rcfg))
-    -- remove the directory
-    removeDirectoryRecursive deployDir
+  scopeInfo "execute DestroyDeploy" $ do
+    tcfg <- getToolConfig
+    let deployDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
+    rcfg <- getReleaseConfig deployDir
+    scopeInfo "running stop script" $ callCommandInDir deployDir (rc_stopCommand rcfg)
+    scopeInfo "removing directory" $ liftIO $ removeDirectoryRecursive deployDir
 
 executeAction (SetEndPoints eps) = do
-  proxyDir <- getProxyDir
-  liftIO $ do
-    writeProxyDockerCompose (proxyDir </> "docker-compose.yml")
-    writeNginxConfig (proxyDir </> "nginx.conf") eps
-    withCurrentDirectory proxyDir $ do
-      -- Start the proxy container if it's not already running"
-      callCommand "docker-compose up -d"
-
-      -- Signal it to reload its configuration"
-      callCommand "docker kill --signal=SIGHUP frontendproxy"
-
+  scopeInfo "execute SetEndPoints" $ do
+    proxyDir <- getProxyDir
+    scopeInfo "writing proxy config files" $ liftIO $ do
+      writeProxyDockerCompose (proxyDir </> "docker-compose.yml")
+      writeNginxConfig (proxyDir </> "nginx.conf") eps
+    callCommandInDir proxyDir "docker-compose up -d"
+    callCommandInDir proxyDir "docker kill --signal=SIGHUP frontendproxy"
 
 getState :: IOR State
 getState = do
@@ -343,3 +339,12 @@ tcEndPoints tcfg = SM.elems (tc_endPoints tcfg)
 
 showText :: Show a => a -> T.Text
 showText = T.pack . show
+
+callCommandInDir :: FilePath -> T.Text -> IOR ()
+callCommandInDir inDir cmd = do
+  scopeInfo ("Running: " <> cmd)  $ do
+    liftIO $ withCurrentDirectory inDir $ callCommand (T.unpack cmd)
+
+getReleaseConfig :: FilePath -> IOR ReleaseConfig
+getReleaseConfig deployDir = do
+  liftIO $ adlFromJsonFile' (deployDir </> "release.json")

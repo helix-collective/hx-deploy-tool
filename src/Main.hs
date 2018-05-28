@@ -3,14 +3,18 @@ module Main where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Data.Text.Lazy as LT;
 import qualified Data.ByteString.Char8 as CBS
 import qualified Commands.LetsEncrypt as LE
 import qualified Commands.ProxyMode as P
 import qualified Commands as C
+import qualified Log as L
 
 import ADL.Config(ToolConfig(..), LetsEncryptConfig(..))
 import ADL.Core(adlFromJsonFile', AdlValue)
+import Control.Exception(finally, catch, SomeException)
 import Control.Monad.Reader(runReaderT)
+import Data.Monoid
 import HelpText(helpText)
 import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
@@ -23,18 +27,21 @@ main = do
   args <- getArgs
   case args of
     ["help"]                            -> help
-    ["fetch-context"]                   -> runWithConfig (C.fetchDeployContext Nothing)
-    ["fetch-context","--retry"]         -> runWithConfig (C.fetchDeployContext (Just 10))
-    ["list-releases"]                   -> runWithConfig (C.listReleases)
-    ["unpack", release, toDir]          -> runWithConfig (C.unpackRelease' (T.pack release) toDir)
-    ["select", release]                 -> runWithConfig (C.select (T.pack release))
-    ["show-log"]                        -> runWithConfig (C.showLog)
-    ["aws-docker-login-cmd"]            -> runWithConfig (C.awsDockerLoginCmd)
-    ["proxy-status"]                    -> runWithConfig (P.showStatus)
-    ["proxy-deploy", release]           -> runWithConfig (P.deploy (T.pack release))
-    ["proxy-undeploy", deploy]          -> runWithConfig (P.undeploy (T.pack deploy))
-    ["proxy-connect", endpoint, deploy] -> runWithConfig (P.connect (T.pack endpoint) (T.pack deploy))
-    ["proxy-disconnect", endpoint]      -> runWithConfig (P.disconnect (T.pack endpoint))
+    ["list-releases"]                   -> runWithConfig       (C.listReleases)
+    ["show-log"]                        -> runWithConfig       (C.showLog)
+
+    ["fetch-context"]                   -> runWithConfigAndLog (C.fetchDeployContext Nothing)
+    ["fetch-context","--retry"]         -> runWithConfigAndLog (C.fetchDeployContext (Just 10))
+    ["unpack", release, toDir]          -> runWithConfigAndLog (C.unpackRelease' (T.pack release) toDir)
+    ["aws-docker-login-cmd"]            -> runWithConfigAndLog (C.awsDockerLoginCmd)
+
+    ["select", release]                 -> runWithConfigAndLog (C.select (T.pack release))
+
+    ["proxy-status"]                    -> runWithConfig       (P.showStatus)
+    ["proxy-deploy", release]           -> runWithConfigAndLog (P.deploy (T.pack release))
+    ["proxy-undeploy", deploy]          -> runWithConfigAndLog (P.undeploy (T.pack deploy))
+    ["proxy-connect", endpoint, deploy] -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
+    ["proxy-disconnect", endpoint]      -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
 
     ["le-get-certs"] -> do
       config <- getLetsEncryptConfig
@@ -58,10 +65,25 @@ help :: IO ()
 help = do
   CBS.putStrLn helpText
 
-runWithConfig :: IOR a -> IO a
+-- | Load the config file and run the action
+runWithConfig :: IOR () -> IO ()
 runWithConfig ma = do
-  config <- getToolConfig
-  runReaderT ma (REnv config)
+  tcfg <- getToolConfig
+  let logger = L.logger (L.logStdout L.Info)
+  catch (runReaderT ma (REnv tcfg logger)) (ehandler logger)
+  where
+    ehandler logger e = L.error logger ("Exception: " <> LT.pack (show (e::SomeException)))
+
+-- | Load the config file and run the action, writing log messages to the configured logfile
+runWithConfigAndLog :: IOR () -> IO ()
+runWithConfigAndLog ma = do
+  tcfg <- getToolConfig
+  (logToFile,closeLogFile) <-  L.logFile L.Info (T.unpack (tc_logFile tcfg))
+  let logToStdout = L.logStdout L.Info
+      logger = L.logger (L.combineLogFns logToFile logToStdout)
+  finally (catch (runReaderT ma (REnv tcfg logger)) (ehandler logger)) closeLogFile
+  where
+    ehandler logger e = L.error logger ("Exception: " <> LT.pack (show (e::SomeException)))
 
 getToolConfig :: IO ToolConfig
 getToolConfig = getConfig "HX_DEPLOY_CONFIG" "etc/hx-deploy-tool.json"
@@ -81,7 +103,6 @@ getConfig envVarName pathFromPrefix = do
      exePath <- getExecutablePath
      return (takeDirectory (takeDirectory exePath) </> pathFromPrefix )
   adlFromJsonFile' configPath
-
 
 usageText :: T.Text
 usageText = "\

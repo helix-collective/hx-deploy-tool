@@ -10,10 +10,11 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
-import qualified Text.Mustache as TM
-import qualified Text.Mustache.Types as TM
+import qualified Log as L
 import qualified Network.AWS.ECR as ECR
 import qualified Network.AWS.S3 as S3
+import qualified Text.Mustache as TM
+import qualified Text.Mustache.Types as TM
 
 import ADL.Config(ToolConfig(..), DeployContextFile(..))
 import ADL.Release(ReleaseConfig(..))
@@ -22,10 +23,11 @@ import Codec.Archive.Zip(withArchive, unpackInto)
 import Control.Concurrent(threadDelay)
 import Control.Exception.Lens
 import Control.Monad(when)
+import Control.Monad.Catch
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Control.Monad.Trans.AWS
 import Control.Monad.Trans.Resource
-import Control.Monad.Catch
 import Control.Lens
 import Data.List(sortOn)
 import Data.Maybe(fromMaybe)
@@ -44,20 +46,21 @@ import Network.AWS.Data.Body(RsBody(..))
 import Network.AWS.Data.Text(ToText(..))
 import Network.HTTP.Types.Status(notFound404)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
-import Types(IOR, REnv(..), getToolConfig)
+import Types(IOR, REnv(..), getToolConfig, scopeInfo)
 
 --- Download the infrastructure context files from S3
 fetchDeployContext :: Maybe Int -> IOR ()
 fetchDeployContext retryAfter = do
-  tcfg <- getToolConfig
-  liftIO $ do
-    let cacheDir = T.unpack (tc_contextCache tcfg)
-    createDirectoryIfMissing True cacheDir
+  scopeInfo "Fetching deploy context from AWS" $ do
+    tcfg <- getToolConfig
     env <- mkAwsEnv
-    for_ (tc_deployContextFiles tcfg) $ \cf -> do
-      let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
-          (bucketName,objectKey) = splitS3Path (dcf_source cf)
-      downloadFileFromS3 env bucketName objectKey cacheFilePath retryAfter
+    liftIO $ do
+      let cacheDir = T.unpack (tc_contextCache tcfg)
+      createDirectoryIfMissing True cacheDir
+      for_ (tc_deployContextFiles tcfg) $ \cf -> do
+        let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
+            (bucketName,objectKey) = splitS3Path (dcf_source cf)
+        downloadFileFromS3 env bucketName objectKey cacheFilePath retryAfter
 
 -- unpack a release into the specified directory, and expand any templates
 --
@@ -65,29 +68,30 @@ fetchDeployContext retryAfter = do
 -- expand templates
 unpackRelease :: (JS.Value -> JS.Value) -> T.Text -> FilePath -> IOR ()
 unpackRelease modifyContextFn release toDir = do
-  tcfg <- getToolConfig
-  liftIO $ do
+  scopeInfo ("Unpacking release " <> " to " <> T.pack toDir) $ do
+    tcfg <- getToolConfig
     env <- mkAwsEnv
-    createDirectoryIfMissing True toDir
-    let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
-        objectKey = S3.ObjectKey (bucketPath <> "/" <> release)
-        releaseFilePath = toDir </> T.unpack release
+    liftIO $ do
+      createDirectoryIfMissing True toDir
+      let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
+          objectKey = S3.ObjectKey (bucketPath <> "/" <> release)
+          releaseFilePath = toDir </> T.unpack release
 
-    -- download the release zip file
-    downloadFileFromS3 env bucketName objectKey releaseFilePath Nothing
+      -- download the release zip file
+      downloadFileFromS3 env bucketName objectKey releaseFilePath Nothing
 
-    -- expand the zip file
-    withArchive (toFilePath releaseFilePath) (unpackInto (toDirPath toDir))
+      -- expand the zip file
+      withArchive (toFilePath releaseFilePath) (unpackInto (toDirPath toDir))
 
-    -- load the release metadata
-    rcfg <- adlFromJsonFile' (toDir </> "release.json")
+      -- load the release metadata
+      rcfg <- adlFromJsonFile' (toDir </> "release.json")
 
-    -- load and merge the infrastructure context
-    ctx <- fmap modifyContextFn (loadMergedContext tcfg)
+      -- load and merge the infrastructure context
+      ctx <- fmap modifyContextFn (loadMergedContext tcfg)
 
-    -- interpolate the context into each templated file
-    for_ (rc_templates rcfg) $ \templatePath -> do
-      expandTemplateFile ctx (toDir </> T.unpack templatePath)
+      -- interpolate the context into each templated file
+      for_ (rc_templates rcfg) $ \templatePath -> do
+        expandTemplateFile ctx (toDir </> T.unpack templatePath)
 
 unpackRelease' :: T.Text -> FilePath -> IOR ()
 unpackRelease' = unpackRelease id
@@ -95,54 +99,52 @@ unpackRelease' = unpackRelease id
 -- Make the specified release the live release, replacing any existing release.
 select :: T.Text -> IOR ()
 select release = do
-  tcfg <- getToolConfig
-  case SM.elems (tc_endPoints tcfg) of
-    [] -> return ()
-    _ -> error "The select command is not allowed when the proxy is enabled"
-  let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
-  let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
+  scopeInfo ("Selecting active release " <> release) $ do
+    tcfg <- getToolConfig
+    case SM.elems (tc_endPoints tcfg) of
+      [] -> return ()
+      _ -> error "The select command is not allowed when the proxy is enabled"
+    let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
+    let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
 
-  -- Fetch the context in case it has been updated
-  fetchDeployContext Nothing
+    -- Fetch the context in case it has been updated
+    fetchDeployContext Nothing
 
-  liftIO $ do
-    logMessage tcfg ("Selecting release " <> release)
-    createDirectoryIfMissing True newReleaseDir
+    liftIO $ createDirectoryIfMissing True newReleaseDir
 
-  -- unpack new release
-  unpackRelease' release newReleaseDir
+    -- unpack new release
+    unpackRelease' release newReleaseDir
 
-  liftIO $ do
     -- Run the prestart command first, to pull/download any dependences.
     -- we do the before stopping the existing release to minimise startup time.
     -- do this first to minimise the new release startup time
-    withCurrentDirectory newReleaseDir $ do
-      rcfg <- adlFromJsonFile' "release.json"
-      callCommand (T.unpack (rc_prestartCommand rcfg))
-
-    -- shut down the current release if it exists
-    currentExists <- doesDirectoryExist currentReleaseLink
-    when currentExists $ do
-      withCurrentDirectory currentReleaseLink $ do
+    scopeInfo "Running prestart script" $ liftIO $ do
+      withCurrentDirectory newReleaseDir $ do
         rcfg <- adlFromJsonFile' "release.json"
-        callCommand (T.unpack (rc_stopCommand rcfg))
+        callCommand (T.unpack (rc_prestartCommand rcfg))
 
-    -- symlink the current release to point to the new one
+    currentExists <- liftIO $ doesDirectoryExist currentReleaseLink
     when currentExists $ do
-      removeLink currentReleaseLink
-    createSymbolicLink newReleaseDir currentReleaseLink
+      scopeInfo "Stopping existing release" $ liftIO $ do
+        withCurrentDirectory currentReleaseLink $ do
+          rcfg <- adlFromJsonFile' "release.json"
+          callCommand (T.unpack (rc_stopCommand rcfg))
 
-    -- start it
-    withCurrentDirectory currentReleaseLink $ do
-      rcfg <- adlFromJsonFile' "release.json"
-      callCommand (T.unpack (rc_startCommand rcfg))
+      scopeInfo "Symlinking new release" $ liftIO $ do
+        when currentExists $ removeLink currentReleaseLink
+        createSymbolicLink newReleaseDir currentReleaseLink
+
+      scopeInfo "Starting new release" $ liftIO $ do
+        withCurrentDirectory currentReleaseLink $ do
+          rcfg <- adlFromJsonFile' "release.json"
+          callCommand (T.unpack (rc_startCommand rcfg))
 
 -- List the releases available for installation
 listReleases :: IOR ()
 listReleases= do
   tcfg <- getToolConfig
+  env <- mkAwsEnv
   liftIO $ do
-    env <- mkAwsEnv
     let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
         listObjectReq = set S3.loPrefix (Just bucketPath) (S3.listObjects bucketName)
     runResourceT . runAWST env $ do
@@ -158,8 +160,8 @@ listReleases= do
 awsDockerLoginCmd :: IOR ()
 awsDockerLoginCmd = do
   tcfg <- getToolConfig
+  env <- mkAwsEnv
   liftIO $ do
-    env <- mkAwsEnv
     runResourceT . runAWST env $ do
       resp <- send ECR.getAuthorizationToken
       case view ECR.gatrsAuthorizationData resp of
@@ -230,11 +232,12 @@ expandTemplateFile ctx templatePath = do
          outfile = dropExtension templatePath
      T.writeFile outfile text
 
-mkAwsEnv :: IO Env
+mkAwsEnv :: IOR Env
 mkAwsEnv = do
-  env0 <- newEnv Discover
-  logger <- newLogger Error stdout
-  return (env0 & envLogger .~ logger)
+  logger <- fmap re_logger ask
+  liftIO $ do
+    env0 <- newEnv Discover
+    return (env0 & envLogger .~ (L.awsLogger logger))
 
 splitS3Path :: T.Text -> (S3.BucketName,S3.ObjectKey)
 splitS3Path s3Path = case T.stripPrefix "s3://" s3Path of
@@ -253,12 +256,3 @@ toFilePath :: FilePath -> Path Abs File
 toFilePath path = case parseAbsFile path of
   Just p -> p
   Nothing -> error "Unable to parse directory"
-
--- crude and slow function to write a line to the log file
-logMessage :: ToolConfig -> T.Text -> IO ()
-logMessage tcfg message = do
-  now <- getCurrentTime
-  let logFile = T.unpack (tc_logFile tcfg)
-      ltext = T.pack (show now) <> ": " <> message <> "\n"
-  createDirectoryIfMissing True (takeDirectory logFile)
-  T.appendFile logFile ltext
