@@ -18,4 +18,4 @@ docker run -it --rm \
  --user $USERID:$GROUPID \
  -w $ROOT \
  helixta/helixdev:2018-04-17 \
- /bin/bash -c "stack --no-nix build && cp `stack --no-nix exec which -- hx-deploy-tool` /tmp && gzip -f /tmp/hx-deploy-tool"
+ /bin/bash -c "stack --no-nix build && cp `stack --no-nix exec which -- hx-deploy-tool` /tmp/hx-deploy-tool.$(arch)-linux && gzip -f /tmp/hx-deploy-tool.$(arch)-linux"
