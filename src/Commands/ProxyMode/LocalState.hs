@@ -94,6 +94,7 @@ executeAction (CreateDeploy d) = do
   scopeInfo "execute CreateDeploy" $ do
     tcfg <- getToolConfig
     pm <- getProxyModeConfig
+    fetchDeployContext Nothing
     let deployDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
     liftIO $ createDirectoryIfMissing True deployDir
     unpackRelease (contextWithLocalPorts pm (d_port d)) (d_release d) deployDir

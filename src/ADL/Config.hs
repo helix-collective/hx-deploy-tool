@@ -5,6 +5,7 @@ module ADL.Config(
     EndPoint(..),
     EndPointType(..),
     LetsEncryptConfig(..),
+    MachineLabel(..),
     ProxyModeConfig(..),
     ToolConfig(..),
     Verbosity(..),
@@ -139,15 +140,34 @@ instance AdlValue LetsEncryptConfig where
         <*> parseField "domains"
         <*> parseFieldDef "verbosity" Verbosity_quiet
 
+data MachineLabel
+    = MachineLabel_label T.Text
+    | MachineLabel_ec2InstanceId
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue MachineLabel where
+    atype _ = "config.MachineLabel"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        MachineLabel_label v -> genUnionValue "label" v
+        MachineLabel_ec2InstanceId -> genUnionVoid "ec2InstanceId"
+        )
+    
+    jsonParser
+        =   parseUnionValue "label" MachineLabel_label
+        <|> parseUnionVoid "ec2InstanceId" MachineLabel_ec2InstanceId
+        <|> parseFail "expected a MachineLabel"
+
 data ProxyModeConfig = ProxyModeConfig
     { pm_endPoints :: StringMap (EndPoint)
     , pm_remoteStateS3 :: (ADL.Sys.Types.Maybe ADL.Types.S3Path)
     , pm_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
+    , pm_slaveLabel :: MachineLabel
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkProxyModeConfig :: StringMap (EndPoint) -> ProxyModeConfig
-mkProxyModeConfig endPoints = ProxyModeConfig endPoints Prelude.Nothing ((,) 8000 8100)
+mkProxyModeConfig endPoints = ProxyModeConfig endPoints Prelude.Nothing ((,) 8000 8100) MachineLabel_ec2InstanceId
 
 instance AdlValue ProxyModeConfig where
     atype _ = "config.ProxyModeConfig"
@@ -156,12 +176,14 @@ instance AdlValue ProxyModeConfig where
         [ genField "endPoints" pm_endPoints
         , genField "remoteStateS3" pm_remoteStateS3
         , genField "dynamicPortRange" pm_dynamicPortRange
+        , genField "slaveLabel" pm_slaveLabel
         ]
     
     jsonParser = ProxyModeConfig
         <$> parseField "endPoints"
         <*> parseFieldDef "remoteStateS3" Prelude.Nothing
         <*> parseFieldDef "dynamicPortRange" ((,) 8000 8100)
+        <*> parseFieldDef "slaveLabel" MachineLabel_ec2InstanceId
 
 data ToolConfig = ToolConfig
     { tc_releasesDir :: ADL.Types.FilePath

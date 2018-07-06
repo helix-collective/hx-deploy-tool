@@ -13,19 +13,22 @@ import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
 import qualified Data.Set as S
+import qualified Network.HTTP.Client as HC
+import qualified Network.AWS.EC2.Metadata as EC2M
 
 import ADL.Config(EndPoint(..), EndPointType(..))
 import ADL.Core(adlFromJsonFile', adlToJsonFile)
 import ADL.Release(ReleaseConfig(..))
-import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..))
+import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..), MachineLabel(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Commands(unpackRelease, fetchDeployContext)
 import Commands.ProxyMode.Types
 import Commands.ProxyMode.LocalState(localState)
-import Commands.ProxyMode.RemoteState(remoteState)
+import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
 import Control.Monad(when)
@@ -49,7 +52,7 @@ showStatus showSlaves = do
   when showSlaves $
     liftIO $ for_ slaveStates $ \(label,slaveState) -> do
       T.putStrLn "----------------------------------------------------------------------"
-      T.putStrLn ("Slave Label: " <> label)
+      T.putStrLn ("Slave: " <> label)
       printState pm slaveState
   where
     printState pm state = do
@@ -74,7 +77,6 @@ deploy release = do
     pm <- getProxyModeConfig
     tcfg <- getToolConfig
     state <- getState
-    fetchDeployContext Nothing
     port <- liftIO $ allocatePort pm state
     updateState (nextState (createDeploy port))
   where
@@ -128,8 +130,11 @@ slaveUpdate = do
   let remoteStateS3 = case pm_remoteStateS3 pm of
         Nothing -> error "Remote state is not configured"
         (Just s3Path) -> s3Path
-  state <- sa_get (remoteState remoteStateS3)
-  sa_update localState (const state)
+  scopeInfo ("Fetching state from " <> masterS3Path remoteStateS3) $ do
+    state <- sa_get (remoteState remoteStateS3)
+    sa_update localState (const state)
+    label <- getSlaveLabel
+    writeSlaveState remoteStateS3 label state
 
 -- | Allocate an open port in the configured range
 allocatePort :: ProxyModeConfig -> State -> IO Word32
@@ -160,3 +165,14 @@ updateState modf = do
   case pm_remoteStateS3 pm of
     Nothing -> sa_update localState modf
     (Just s3Path) -> sa_update (remoteState s3Path) modf
+
+
+getSlaveLabel :: IOR T.Text
+getSlaveLabel = do
+  pm <- getProxyModeConfig
+  case pm_slaveLabel pm of
+    MachineLabel_label label -> return label
+    MachineLabel_ec2InstanceId -> liftIO $ do
+      mgr <- HC.newManager HC.defaultManagerSettings
+      bs <- EC2M.metadata mgr EC2M.InstanceId
+      return (T.decodeUtf8 bs)

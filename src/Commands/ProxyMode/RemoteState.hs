@@ -1,11 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Commands.ProxyMode.RemoteState(
-  remoteState
+  remoteState,
+  writeSlaveState,
+  masterS3Path,
+  slaveS3Path,
 ) where
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Aeson as JS
+import qualified Data.Text.Lazy as TL
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Conduit.List as CL
@@ -27,7 +31,7 @@ import Network.HTTP.Types(notFound404)
 import ADL.Core(adlFromByteString, adlToByteString, textFromParseContext, ParseResult(..))
 import ADL.State(State(..), Deploy(..))
 import Commands.ProxyMode.Types
-import Types(IOR, REnv(..), getToolConfig, scopeInfo)
+import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 import Util(mkAwsEnv, splitS3Path)
 
 type S3Path = T.Text
@@ -58,8 +62,9 @@ getSlaves remoteStateS3 = do
           listObjectReq = set S3.loPrefix (Just bucketPath) (S3.listObjects bucketName)
       objects <- runResourceT . runAWST env $ do
         paginate listObjectReq $$ CL.foldMap (view S3.lorsContents)
-      let keys = catMaybes [view S3.oKey obj ^? S3.keyName '/' | obj <- objects]
-      return (catMaybes (map parseSlaveLabel keys))
+      let keys = catMaybes [view S3.oKey obj ^? S3._ObjectKey | obj <- objects]
+      let labels = catMaybes (map parseSlaveLabel keys)
+      return labels
 
     -- extract label from ".../label/state.json"
     parseSlaveLabel :: T.Text -> Maybe T.Text
@@ -69,10 +74,17 @@ getSlaves remoteStateS3 = do
 
 updateState :: S3Path -> (State -> State) -> IOR ()
 updateState remoteStateS3 modf = do
+  let s3Path = masterS3Path remoteStateS3
+  info (TL.fromStrict ("Updating remote state at " <> s3Path))
   env <- mkAwsEnv
-  state <- stateFromS3 env (masterS3Path remoteStateS3)
+  state <- stateFromS3 env s3Path
   let state' = modf state
-  stateToS3 env (masterS3Path remoteStateS3) state'
+  stateToS3 env s3Path state'
+
+writeSlaveState :: S3Path -> T.Text -> State -> IOR ()
+writeSlaveState remoteStateS3 label state = do
+  env <- mkAwsEnv
+  stateToS3 env (slaveS3Path remoteStateS3 label) state
 
 stateFromS3 :: Env -> S3Path -> IOR State
 stateFromS3 env s3Path = do

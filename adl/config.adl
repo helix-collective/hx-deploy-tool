@@ -23,14 +23,23 @@ union DeployMode {
 };
 
 struct ProxyModeConfig {
+    /// The configured endpoints.
     StringMap<EndPoint> endPoints;
 
     /// If set, we are in remote mode, with state stored at this S3 path
     Maybe<S3Path> remoteStateS3 = "nothing";
 
+    /// When we start deploys we choose a port from this range
     Pair<Word32,Word32> dynamicPortRange = {"v1":8000, "v2":8100};
+
+    /// How we generate identifiers for slave machines
+    MachineLabel slaveLabel = "ec2InstanceId";
 };
 
+union MachineLabel {
+  String label;
+  Void ec2InstanceId;
+};
 
 // A proxy exposed endpoint
 struct EndPoint {
