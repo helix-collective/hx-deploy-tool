@@ -111,14 +111,20 @@ executeAction (DestroyDeploy d) = do
     scopeInfo "running stop script" $ callCommandInDir deployDir (rc_stopCommand rcfg)
     scopeInfo "removing directory" $ liftIO $ removeDirectoryRecursive deployDir
 
-executeAction (SetEndPoints eps) = do
+executeAction (SetEndPoints liveEndPoints) = do
   scopeInfo "execute SetEndPoints" $ do
+    allEndPoints <- fmap pm_endPoints getProxyModeConfig
     proxyDir <- getProxyDir
     scopeInfo "writing proxy config files" $ liftIO $ do
       writeProxyDockerCompose (proxyDir </> "docker-compose.yml")
-      writeNginxConfig (proxyDir </> "nginx.conf") eps
+      writeNginxConfig (proxyDir </> "nginx.conf") (maybeEndpoints allEndPoints liveEndPoints)
     callCommandInDir proxyDir "docker-compose up -d"
     callCommandInDir proxyDir "docker kill --signal=SIGHUP frontendproxy"
+    where
+      maybeEndpoints :: SM.StringMap EndPoint -> [(EndPoint,Deploy)] -> [(EndPoint,Maybe Deploy)]
+      maybeEndpoints eps liveEndPoints = [ (ep,findDeploy label) | (label,ep) <- SM.toList eps]
+        where
+          findDeploy label = fmap snd (find ( (==label) . ep_label . fst) liveEndPoints)
 
 getState :: IOR State
 getState = do
@@ -156,7 +162,7 @@ writeProxyDockerCompose path = T.writeFile path (T.intercalate "\n" lines)
       , "      - /etc/letsencrypt:/etc/letsencrypt"
       ]
 
-writeNginxConfig :: FilePath -> [(EndPoint,Deploy)] -> IO ()
+writeNginxConfig :: FilePath -> [(EndPoint,Maybe Deploy)] -> IO ()
 writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
   where
     lines =
@@ -190,7 +196,7 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       concat (map serverBlock eps) <>
       [ "}"
       ]
-    serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},d) =
+    serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},Just d) =
       [ "  server {"
       , "    listen 80;"
       , "    server_name " <> ep_serverName ep <> ";"
@@ -199,7 +205,14 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       , "    }"
       , "  }"
       ]
-    serverBlock (ep@EndPoint{ep_etype=Ep_httpsWithRedirect},d) =
+    serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},Nothing) =
+      [ "  server {"
+      , "    listen 80;"
+      , "    server_name " <> ep_serverName ep <> ";"
+      , "    return 503;"
+      , "  }"
+      ]
+    serverBlock (ep@EndPoint{ep_etype=Ep_httpsWithRedirect},Just d) =
       [ "  server {"
       , "    listen 80;"
       , "    server_name " <> ep_serverName ep <> ";"
@@ -213,6 +226,20 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       , "    location / {"
       , "      proxy_pass http://localhost:" <> showText (d_port d) <> "/;"
       , "    }"
+      , "  }"
+      ]
+    serverBlock (ep@EndPoint{ep_etype=Ep_httpsWithRedirect},Nothing) =
+      [ "  server {"
+      , "    listen 80;"
+      , "    server_name " <> ep_serverName ep <> ";"
+      , "    return 503;"
+      , "  }"
+      , "  server {"
+      , "    listen       443 ssl;"
+      , "    server_name " <> ep_serverName ep <> ";"
+      , "    ssl_certificate " <> ep_sslCertDir ep <> "/fullchain.pem;"
+      , "    ssl_certificate_key " <> ep_sslCertDir ep <> "/privkey.pem;"
+      , "    return 503;"
       , "  }"
       ]
 
