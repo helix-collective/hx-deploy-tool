@@ -48,6 +48,10 @@ Connect an endpoint to a running deployment
 ## hx-deploy-tool proxy-disconnect <endpoint>
 Disconnect an endpoint
 
+## hx-deploy-tool proxy-slave-update
+If the tool is configured with proxy remote state, this fetches
+the master state from S3, and updates the local state to match.
+
 # Deployments without a proxy
 The following subcommands are used to manage proxyless deployments:
 

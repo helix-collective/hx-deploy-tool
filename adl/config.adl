@@ -5,6 +5,7 @@ import types.S3Path;
 import types.EndPointLabel;
 import sys.types.Map;
 import sys.types.Pair;
+import sys.types.Maybe;
 
 /// Configuration file for the deployment tool
 struct ToolConfig {
@@ -13,7 +14,20 @@ struct ToolConfig {
     FilePath logFile = "/opt/var/log/hx-deploy-tool.log";
     S3Path releasesS3;
     Vector<DeployContextFile> deployContextFiles;
-    StringMap<EndPoint> endPoints = {};
+    DeployMode deployMode = "select";
+};
+
+union DeployMode {
+   Void select;
+   ProxyModeConfig proxy;
+};
+
+struct ProxyModeConfig {
+    StringMap<EndPoint> endPoints;
+
+    /// If set, we are in remote mode, with state stored at this S3 path
+    Maybe<S3Path> remoteStateS3 = "nothing";
+
     Pair<Word32,Word32> dynamicPortRange = {"v1":8000, "v2":8100};
 };
 

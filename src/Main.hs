@@ -37,11 +37,13 @@ main = do
 
     ["select", release]                 -> runWithConfigAndLog (C.select (T.pack release))
 
-    ["proxy-status"]                    -> runWithConfig       (P.showStatus)
+    ["proxy-status"]                    -> runWithConfig       (P.showStatus False)
+    ["proxy-status", "--show-slaves"]   -> runWithConfig       (P.showStatus True)
     ["proxy-deploy", release]           -> runWithConfigAndLog (P.deploy (T.pack release))
     ["proxy-undeploy", deploy]          -> runWithConfigAndLog (P.undeploy (T.pack deploy))
     ["proxy-connect", endpoint, deploy] -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
     ["proxy-disconnect", endpoint]      -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
+    ["proxy-slave-update"]              -> runWithConfigAndLog (P.slaveUpdate)
 
     ["le-get-certs"] -> do
       config <- getLetsEncryptConfig
@@ -115,11 +117,12 @@ usageText = "\
   \  hx-deploy-tool aws-docker-login-cmd\n\
   \\n\
   \Deployment with a proxy:\n\
-  \  hx-deploy-tool proxy-status\n\
+  \  hx-deploy-tool proxy-status [--show-slaves]\n\
   \  hx-deploy-tool proxy-deploy <release>\n\
   \  hx-deploy-tool proxy-undeploy <release>\n\
   \  hx-deploy-tool proxy-connect <endpoint> <release>\n\
   \  hx-deploy-tool proxy-disconnect <endpoint>\n\
+  \  hx-deploy-tool proxy-slave-update\n\
   \\n\
   \Deployment without a proxy:\n\
   \  hx-deploy-tool select <release>\n\

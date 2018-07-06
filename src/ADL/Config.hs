@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     DeployContextFile(..),
+    DeployMode(..),
     EndPoint(..),
     EndPointType(..),
     LetsEncryptConfig(..),
+    ProxyModeConfig(..),
     ToolConfig(..),
     Verbosity(..),
 ) where
@@ -40,6 +42,24 @@ instance AdlValue DeployContextFile where
     jsonParser = DeployContextFile
         <$> parseField "name"
         <*> parseField "source"
+
+data DeployMode
+    = DeployMode_select
+    | DeployMode_proxy ProxyModeConfig
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue DeployMode where
+    atype _ = "config.DeployMode"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        DeployMode_select -> genUnionVoid "select"
+        DeployMode_proxy v -> genUnionValue "proxy" v
+        )
+    
+    jsonParser
+        =   parseUnionVoid "select" DeployMode_select
+        <|> parseUnionValue "proxy" DeployMode_proxy
+        <|> parseFail "expected a DeployMode"
 
 data EndPoint = EndPoint
     { ep_label :: ADL.Types.EndPointLabel
@@ -119,19 +139,42 @@ instance AdlValue LetsEncryptConfig where
         <*> parseField "domains"
         <*> parseFieldDef "verbosity" Verbosity_quiet
 
+data ProxyModeConfig = ProxyModeConfig
+    { pm_endPoints :: StringMap (EndPoint)
+    , pm_remoteStateS3 :: (ADL.Sys.Types.Maybe ADL.Types.S3Path)
+    , pm_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
+    }
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+mkProxyModeConfig :: StringMap (EndPoint) -> ProxyModeConfig
+mkProxyModeConfig endPoints = ProxyModeConfig endPoints Prelude.Nothing ((,) 8000 8100)
+
+instance AdlValue ProxyModeConfig where
+    atype _ = "config.ProxyModeConfig"
+    
+    jsonGen = genObject
+        [ genField "endPoints" pm_endPoints
+        , genField "remoteStateS3" pm_remoteStateS3
+        , genField "dynamicPortRange" pm_dynamicPortRange
+        ]
+    
+    jsonParser = ProxyModeConfig
+        <$> parseField "endPoints"
+        <*> parseFieldDef "remoteStateS3" Prelude.Nothing
+        <*> parseFieldDef "dynamicPortRange" ((,) 8000 8100)
+
 data ToolConfig = ToolConfig
     { tc_releasesDir :: ADL.Types.FilePath
     , tc_contextCache :: ADL.Types.FilePath
     , tc_logFile :: ADL.Types.FilePath
     , tc_releasesS3 :: ADL.Types.S3Path
     , tc_deployContextFiles :: [DeployContextFile]
-    , tc_endPoints :: StringMap (EndPoint)
-    , tc_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
+    , tc_deployMode :: DeployMode
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: ADL.Types.S3Path -> [DeployContextFile] -> ToolConfig
-mkToolConfig releasesS3 deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" releasesS3 deployContextFiles (stringMapFromList []) ((,) 8000 8100)
+mkToolConfig releasesS3 deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" releasesS3 deployContextFiles DeployMode_select
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -142,8 +185,7 @@ instance AdlValue ToolConfig where
         , genField "logFile" tc_logFile
         , genField "releasesS3" tc_releasesS3
         , genField "deployContextFiles" tc_deployContextFiles
-        , genField "endPoints" tc_endPoints
-        , genField "dynamicPortRange" tc_dynamicPortRange
+        , genField "deployMode" tc_deployMode
         ]
     
     jsonParser = ToolConfig
@@ -152,8 +194,7 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "logFile" "/opt/var/log/hx-deploy-tool.log"
         <*> parseField "releasesS3"
         <*> parseField "deployContextFiles"
-        <*> parseFieldDef "endPoints" (stringMapFromList [])
-        <*> parseFieldDef "dynamicPortRange" ((,) 8000 8100)
+        <*> parseFieldDef "deployMode" DeployMode_select
 
 data Verbosity
     = Verbosity_quiet

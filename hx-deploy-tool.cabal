@@ -29,9 +29,13 @@ executable hx-deploy-tool
                      , Commands
                      , Commands.LetsEncrypt
                      , Commands.ProxyMode
+                     , Commands.ProxyMode.Types
+                     , Commands.ProxyMode.LocalState
+                     , Commands.ProxyMode.RemoteState
                      , HelpText
                      , Log
                      , Types
+                     , Util
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , aeson >= 1.0 && < 1.3
