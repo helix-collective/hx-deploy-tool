@@ -29,6 +29,7 @@ import Commands(unpackRelease, fetchDeployContext)
 import Commands.ProxyMode.Types
 import Commands.ProxyMode.LocalState(localState)
 import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path)
+import Control.Concurrent(threadDelay)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
 import Control.Monad(when)
@@ -37,6 +38,7 @@ import Data.Maybe(catMaybes)
 import Data.Foldable(for_)
 import Data.Monoid
 import Data.Word
+import Data.Time.Clock(addUTCTime,diffUTCTime,getCurrentTime)
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory, removeDirectoryRecursive)
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Process(callCommand)
@@ -124,8 +126,21 @@ disconnect endPointLabel = do
     updateState (\s -> s{s_connections=SM.delete endPointLabel (s_connections s)})
 
 -- | Update local state to reflect the master state from S3
-slaveUpdate :: IOR ()
-slaveUpdate = do
+slaveUpdate :: Maybe Int -> IOR ()
+slaveUpdate Nothing = slaveUpdate_
+slaveUpdate (Just repeat) = loop
+  where
+    loop = do
+      t0 <- liftIO $ getCurrentTime
+      slaveUpdate_
+      liftIO $ do
+        t1 <- getCurrentTime
+        let delay = floor (toRational (diffUTCTime (addUTCTime (fromIntegral repeat) t0) t1))
+        when (delay > 0) (threadDelay (delay * 1000000))
+      loop
+
+slaveUpdate_:: IOR ()
+slaveUpdate_ = do
   pm <- getProxyModeConfig
   let remoteStateS3 = case pm_remoteStateS3 pm of
         Nothing -> error "Remote state is not configured"

@@ -48,9 +48,11 @@ Connect an endpoint to a running deployment
 ## hx-deploy-tool proxy-disconnect <endpoint>
 Disconnect an endpoint
 
-## hx-deploy-tool proxy-slave-update
+## hx-deploy-tool proxy-slave-update [--repeat n]
 If the tool is configured with proxy remote state, this fetches
 the master state from S3, and updates the local state to match.
+With a repeat argument, the command will repeat every n seconds,
+running indefinitely.
 
 # Deployments without a proxy
 The following subcommands are used to manage proxyless deployments:

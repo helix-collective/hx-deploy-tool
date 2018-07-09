@@ -26,24 +26,27 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    ["help"]                            -> help
-    ["list-releases"]                   -> runWithConfig       (C.listReleases)
-    ["show-log"]                        -> runWithConfig       (C.showLog)
+    ["help"]                                  -> help
+    ["list-releases"]                         -> runWithConfig       (C.listReleases)
+    ["show-log"]                              -> runWithConfig       (C.showLog)
 
-    ["fetch-context"]                   -> runWithConfigAndLog (C.fetchDeployContext Nothing)
-    ["fetch-context","--retry"]         -> runWithConfigAndLog (C.fetchDeployContext (Just 10))
-    ["unpack", release, toDir]          -> runWithConfigAndLog (C.unpackRelease' (T.pack release) toDir)
-    ["aws-docker-login-cmd"]            -> runWithConfigAndLog (C.awsDockerLoginCmd)
+    ["fetch-context"]                         -> runWithConfigAndLog (C.fetchDeployContext Nothing)
+    ["fetch-context","--retry"]               -> runWithConfigAndLog (C.fetchDeployContext (Just 10))
+    ["unpack", release, toDir]                -> runWithConfigAndLog (C.unpackRelease' (T.pack release) toDir)
+    ["aws-docker-login-cmd"]                  -> runWithConfigAndLog (C.awsDockerLoginCmd)
 
-    ["select", release]                 -> runWithConfigAndLog (C.select (T.pack release))
+    ["select", release]                       -> runWithConfigAndLog (C.select (T.pack release))
 
-    ["proxy-status"]                    -> runWithConfig       (P.showStatus False)
-    ["proxy-status", "--show-slaves"]   -> runWithConfig       (P.showStatus True)
-    ["proxy-deploy", release]           -> runWithConfigAndLog (P.deploy (T.pack release))
-    ["proxy-undeploy", deploy]          -> runWithConfigAndLog (P.undeploy (T.pack deploy))
-    ["proxy-connect", endpoint, deploy] -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
-    ["proxy-disconnect", endpoint]      -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
-    ["proxy-slave-update"]              -> runWithConfigAndLog (P.slaveUpdate)
+    ["proxy-status"]                          -> runWithConfig       (P.showStatus False)
+    ["proxy-status", "--show-slaves"]         -> runWithConfig       (P.showStatus True)
+    ["proxy-deploy", release]                 -> runWithConfigAndLog (P.deploy (T.pack release))
+    ["proxy-undeploy", deploy]                -> runWithConfigAndLog (P.undeploy (T.pack deploy))
+    ["proxy-connect", endpoint, deploy]       -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
+    ["proxy-disconnect", endpoint]            -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
+    ["proxy-slave-update"]                    -> runWithConfigAndLog (P.slaveUpdate Nothing)
+    ["proxy-slave-update", "--repeat", ssecs]  -> do
+      secs <- readCheck ssecs
+      runWithConfigAndLog (P.slaveUpdate (Just secs))
 
     ["le-get-certs"] -> do
       config <- getLetsEncryptConfig
@@ -66,6 +69,12 @@ usage = do
 help :: IO ()
 help = do
   CBS.putStrLn helpText
+
+
+readCheck :: (Read a) => String -> IO a
+readCheck s = case reads s of
+  [(a,"")] -> return a
+  _ -> error ("unable to parse: " <> s)
 
 -- | Load the config file and run the action
 runWithConfig :: IOR () -> IO ()
@@ -122,7 +131,7 @@ usageText = "\
   \  hx-deploy-tool proxy-undeploy <release>\n\
   \  hx-deploy-tool proxy-connect <endpoint> <release>\n\
   \  hx-deploy-tool proxy-disconnect <endpoint>\n\
-  \  hx-deploy-tool proxy-slave-update\n\
+  \  hx-deploy-tool proxy-slave-update [--repeat n]\n\
   \\n\
   \Deployment without a proxy:\n\
   \  hx-deploy-tool select <release>\n\
