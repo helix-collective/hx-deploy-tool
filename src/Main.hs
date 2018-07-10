@@ -89,10 +89,10 @@ runWithConfig ma = do
 runWithConfigAndLog :: IOR () -> IO ()
 runWithConfigAndLog ma = do
   tcfg <- getToolConfig
-  (logToFile,closeLogFile) <-  L.logFile L.Info (T.unpack (tc_logFile tcfg))
+  logToFile <-  L.logFile L.Info (T.unpack (tc_logFile tcfg))
   let logToStdout = L.logStdout L.Info
       logger = L.logger (L.combineLogFns logToFile logToStdout)
-  finally (catch (runReaderT ma (REnv tcfg logger)) (ehandler logger)) closeLogFile
+  finally (catch (runReaderT ma (REnv tcfg logger)) (ehandler logger)) (L.l_close (L.l_logfns logger))
   where
     ehandler logger e = L.error logger ("Exception: " <> LT.pack (show (e::SomeException)))
 

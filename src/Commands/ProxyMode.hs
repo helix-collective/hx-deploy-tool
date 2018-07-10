@@ -42,7 +42,7 @@ import Data.Time.Clock(addUTCTime,diffUTCTime,getCurrentTime)
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory, removeDirectoryRecursive)
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Process(callCommand)
-import Types(IOR, REnv(..), getToolConfig, scopeInfo)
+import Types(IOR, REnv(..), getToolConfig, scopeInfo, flushlog)
 
 -- | Show the proxy system status, specifically the endpoints and live deploys.
 showStatus :: Bool -> IOR ()
@@ -133,6 +133,7 @@ slaveUpdate (Just repeat) = loop
     loop = do
       t0 <- liftIO $ getCurrentTime
       slaveUpdate_
+      flushlog
       liftIO $ do
         t1 <- getCurrentTime
         let delay = floor (toRational (diffUTCTime (addUTCTime (fromIntegral repeat) t0) t1))

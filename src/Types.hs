@@ -27,6 +27,12 @@ debug = logm L.Debug
 info = logm L.Info
 error = logm L.Error
 
+-- | Flush the log - useful in a long running processs
+flushlog :: IOR ()
+flushlog = do
+  logger <- fmap re_logger ask
+  liftIO $ L.l_flush (L.l_logfns logger)
+
 -- | Generate an info log message, indenting subsequently
 -- log messages in child action.
 scopeInfo :: T.Text -> IOR a -> IOR a
