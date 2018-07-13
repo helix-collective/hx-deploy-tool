@@ -18,7 +18,7 @@ import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyMo
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Commands.ProxyMode.Types
-import Commands(unpackRelease, fetchDeployContext)
+import Util(unpackRelease,fetchDeployContext)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
 import Data.List(find)

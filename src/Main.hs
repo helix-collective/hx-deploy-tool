@@ -8,9 +8,10 @@ import qualified Data.ByteString.Char8 as CBS
 import qualified Commands.LetsEncrypt as LE
 import qualified Commands.ProxyMode as P
 import qualified Commands as C
+import qualified Util as U
 import qualified Log as L
 
-import ADL.Config(ToolConfig(..), LetsEncryptConfig(..))
+import ADL.Config(ToolConfig(..), LetsEncryptConfig(..), DeployMode(..))
 import ADL.Core(adlFromJsonFile', AdlValue)
 import Control.Exception(finally, catch, SomeException)
 import Control.Monad.Reader(runReaderT)
@@ -20,7 +21,7 @@ import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
 import System.FilePath(takeDirectory, (</>))
 import System.Posix.Files(fileExist)
-import Types(REnv(..),IOR)
+import Types(REnv(..),IOR, getToolConfig)
 
 main :: IO ()
 main = do
@@ -30,9 +31,9 @@ main = do
     ["list-releases"]                         -> runWithConfig       (C.listReleases)
     ["show-log"]                              -> runWithConfig       (C.showLog)
 
-    ["fetch-context"]                         -> runWithConfigAndLog (C.fetchDeployContext Nothing)
-    ["fetch-context","--retry"]               -> runWithConfigAndLog (C.fetchDeployContext (Just 10))
-    ["unpack", release, toDir]                -> runWithConfigAndLog (C.unpackRelease' (T.pack release) toDir)
+    ["fetch-context"]                         -> runWithConfigAndLog (U.fetchDeployContext Nothing)
+    ["fetch-context","--retry"]               -> runWithConfigAndLog (U.fetchDeployContext (Just 10))
+    ["unpack", release, toDir]                -> runWithConfigAndLog (U.unpackRelease' (T.pack release) toDir)
     ["aws-docker-login-cmd"]                  -> runWithConfigAndLog (C.awsDockerLoginCmd)
 
     ["select", release]                       -> runWithConfigAndLog (C.select (T.pack release))
@@ -79,7 +80,7 @@ readCheck s = case reads s of
 -- | Load the config file and run the action
 runWithConfig :: IOR () -> IO ()
 runWithConfig ma = do
-  tcfg <- getToolConfig
+  tcfg <- loadToolConfig
   let logger = L.logger (L.logStdout L.Info)
   catch (runReaderT ma (REnv tcfg logger)) (ehandler logger)
   where
@@ -88,7 +89,7 @@ runWithConfig ma = do
 -- | Load the config file and run the action, writing log messages to the configured logfile
 runWithConfigAndLog :: IOR () -> IO ()
 runWithConfigAndLog ma = do
-  tcfg <- getToolConfig
+  tcfg <- loadToolConfig
   logToFile <-  L.logFile L.Info (T.unpack (tc_logFile tcfg))
   let logToStdout = L.logStdout L.Info
       logger = L.logger (L.combineLogFns logToFile logToStdout)
@@ -96,8 +97,8 @@ runWithConfigAndLog ma = do
   where
     ehandler logger e = L.error logger ("Exception: " <> LT.pack (show (e::SomeException)))
 
-getToolConfig :: IO ToolConfig
-getToolConfig = getConfig "HX_DEPLOY_CONFIG" "etc/hx-deploy-tool.json"
+loadToolConfig :: IO ToolConfig
+loadToolConfig = getConfig "HX_DEPLOY_CONFIG" "etc/hx-deploy-tool.json"
 
 getLetsEncryptConfig :: IO LetsEncryptConfig
 getLetsEncryptConfig = getConfig "HX_LETSENCRYPT_CONFIG" "etc/letsencrypt-aws.json"

@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Commands.ProxyMode(
+  select,
   showStatus,
   deploy,
   undeploy,
@@ -25,7 +26,7 @@ import ADL.Release(ReleaseConfig(..))
 import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..), MachineLabel(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
-import Commands(unpackRelease, fetchDeployContext)
+import Util(unpackRelease,fetchDeployContext)
 import Commands.ProxyMode.Types
 import Commands.ProxyMode.LocalState(localState)
 import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path)
@@ -151,6 +152,20 @@ slaveUpdate_ = do
     sa_update localState (const state)
     label <- getSlaveLabel
     writeSlaveState remoteStateS3 label state
+
+-- Make the specified release the live deploy on the endpoint called "main".
+-- Any existing deploy on that endpoint will be shut down
+select  :: T.Text -> IOR ()
+select release = do
+  let endpoint = "main"
+
+  pm <- getProxyModeConfig
+  origState <- getState
+  deploy release
+  connect endpoint release
+  case SM.lookup endpoint (s_connections origState) of
+    Nothing -> return ()
+    Just deployLabel -> undeploy deployLabel
 
 -- | Allocate an open port in the configured range
 allocatePort :: ProxyModeConfig -> State -> IO Word32

@@ -15,6 +15,7 @@ import qualified Network.AWS.ECR as ECR
 import qualified Network.AWS.S3 as S3
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
+import qualified Commands.ProxyMode as P
 
 import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
@@ -47,59 +48,18 @@ import Network.AWS.Data.Text(ToText(..))
 import Network.HTTP.Types.Status(notFound404)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
-import Util(mkAwsEnv, splitS3Path)
-
---- Download the infrastructure context files from S3
-fetchDeployContext :: Maybe Int -> IOR ()
-fetchDeployContext retryAfter = do
-  scopeInfo "Fetching deploy context from AWS" $ do
-    tcfg <- getToolConfig
-    env <- mkAwsEnv
-    liftIO $ do
-      let cacheDir = T.unpack (tc_contextCache tcfg)
-      createDirectoryIfMissing True cacheDir
-      for_ (tc_deployContextFiles tcfg) $ \cf -> do
-        let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
-            (bucketName,objectKey) = splitS3Path (dcf_source cf)
-        downloadFileFromS3 env bucketName objectKey cacheFilePath retryAfter
-
--- unpack a release into the specified directory, and expand any templates
---
--- `modifyContextFn` can be used to modify the context before it is used to
--- expand templates
-unpackRelease :: (JS.Value -> JS.Value) -> T.Text -> FilePath -> IOR ()
-unpackRelease modifyContextFn release toDir = do
-  scopeInfo ("Unpacking release " <> " to " <> T.pack toDir) $ do
-    tcfg <- getToolConfig
-    env <- mkAwsEnv
-    liftIO $ do
-      createDirectoryIfMissing True toDir
-      let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
-          objectKey = S3.ObjectKey (bucketPath <> "/" <> release)
-          releaseFilePath = toDir </> T.unpack release
-
-      -- download the release zip file
-      downloadFileFromS3 env bucketName objectKey releaseFilePath Nothing
-
-      -- expand the zip file
-      withArchive (toFilePath releaseFilePath) (unpackInto (toDirPath toDir))
-
-      -- load the release metadata
-      rcfg <- adlFromJsonFile' (toDir </> "release.json")
-
-      -- load and merge the infrastructure context
-      ctx <- fmap modifyContextFn (loadMergedContext tcfg)
-
-      -- interpolate the context into each templated file
-      for_ (rc_templates rcfg) $ \templatePath -> do
-        expandTemplateFile ctx (toDir </> T.unpack templatePath)
-
-unpackRelease' :: T.Text -> FilePath -> IOR ()
-unpackRelease' = unpackRelease id
+import Util(mkAwsEnv, splitS3Path,downloadFileFromS3,unpackRelease', fetchDeployContext)
 
 -- Make the specified release the live release, replacing any existing release.
 select :: T.Text -> IOR ()
 select release = do
+  tcfg <- getToolConfig
+  case tc_deployMode tcfg of
+    DeployMode_select -> selectNoProxy release
+    _ -> P.select release
+
+selectNoProxy :: T.Text -> IOR ()
+selectNoProxy release = do
   scopeInfo ("Selecting active release " <> release) $ do
     tcfg <- getToolConfig
     case tc_deployMode tcfg of
@@ -195,50 +155,3 @@ showLog = do
       when (not eof) $ do
         T.hGetLine h >>= T.putStrLn
         nextLine h
-
-downloadFileFromS3 :: Env -> S3.BucketName -> S3.ObjectKey -> FilePath -> Maybe Int -> IO ()
-downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter = do
-  handling _ServiceError onServiceError $ do
-    T.putStrLn ("Downloading s3://" <> toText bucketName <> "/" <> toText objectKey <> " to " <> T.pack toFilePath)
-    runResourceT . runAWST env $ do
-      resp <- send (S3.getObject bucketName objectKey)
-      liftResourceT (_streamBody (view S3.gorsBody resp) $$+- sinkFile toFilePath)
-  where
-   onServiceError :: ServiceError -> IO ()
-   onServiceError se =
-     case retryAfter of
-        Nothing -> throwing _ServiceError se
-        (Just delaySecs) -> do
-          threadDelay (1000000 * delaySecs)
-          downloadFileFromS3 env bucketName objectKey toFilePath retryAfter
-
-loadMergedContext :: ToolConfig -> IO JS.Value
-loadMergedContext tcfg = do
-  let cacheDir = T.unpack (tc_contextCache tcfg)
-  values <- for (tc_deployContextFiles tcfg) $ \cf -> do
-    let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
-    lbs <- LBS.readFile cacheFilePath
-    case JS.eitherDecode' lbs of
-     (Left e) -> error ("Unable to parse json from " <> cacheFilePath)
-     (Right jv) -> return (takeBaseName cacheFilePath, jv)
-  return (JS.Object (HM.fromList [(T.pack file,jv) | (file,jv) <- values]))
-
-expandTemplateFile :: JS.Value -> FilePath -> IO ()
-expandTemplateFile ctx templatePath = do
-  etemplate <- TM.automaticCompile [takeDirectory templatePath] templatePath
-  case etemplate of
-   Left err -> error (show err)
-   Right template -> do
-     let text = TM.substitute template ctx
-         outfile = dropExtension templatePath
-     T.writeFile outfile text
-
-toDirPath :: FilePath -> Path Abs Dir
-toDirPath path = case parseAbsDir path of
-  Just p -> p
-  Nothing -> error "Unable to parse directory"
-
-toFilePath :: FilePath -> Path Abs File
-toFilePath path = case parseAbsFile path of
-  Just p -> p
-  Nothing -> error "Unable to parse directory"
