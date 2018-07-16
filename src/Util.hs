@@ -117,7 +117,7 @@ checkReleaseExists release = do
   (bucketName,objectKey) <- releaseS3Location release
   exists <- liftIO $ fileExistsS3 env bucketName objectKey
   when (not exists) $ do
-    error ("Release" <> T.unpack release <> " does not exist in S3")
+    error ("Release " <> T.unpack release <> " does not exist in S3")
   return ()
 
 loadMergedContext :: ToolConfig -> IO JS.Value
