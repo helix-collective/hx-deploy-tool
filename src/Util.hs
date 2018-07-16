@@ -7,6 +7,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.Conduit.List as CL
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Text.Lazy as LT
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
@@ -46,7 +47,7 @@ import Network.AWS.Data.Body(RsBody(..))
 import Network.AWS.Data.Text(ToText(..))
 import Network.HTTP.Types.Status(notFound404)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
-import Types(IOR, REnv(..), getToolConfig, scopeInfo)
+import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 
 mkAwsEnv :: IOR Env
 mkAwsEnv = do
@@ -69,13 +70,13 @@ fetchDeployContext retryAfter = do
   scopeInfo "Fetching deploy context from AWS" $ do
     tcfg <- getToolConfig
     env <- mkAwsEnv
-    liftIO $ do
+    do
       let cacheDir = T.unpack (tc_contextCache tcfg)
-      createDirectoryIfMissing True cacheDir
+      liftIO $ createDirectoryIfMissing True cacheDir
       for_ (tc_deployContextFiles tcfg) $ \cf -> do
         let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
             (bucketName,objectKey) = splitS3Path (dcf_source cf)
-        downloadFileFromS3 env bucketName objectKey cacheFilePath retryAfter
+        downloadFileFromS3' env bucketName objectKey cacheFilePath retryAfter
 
 -- unpack a release into the specified directory, and expand any templates
 --
@@ -86,11 +87,10 @@ unpackRelease modifyContextFn release toDir = do
   scopeInfo ("Unpacking release " <> " to " <> T.pack toDir) $ do
     tcfg <- getToolConfig
     env <- mkAwsEnv
+    (bucketName,objectKey) <- releaseS3Location release
     liftIO $ do
+      let releaseFilePath = toDir </> T.unpack release
       createDirectoryIfMissing True toDir
-      let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
-          objectKey = S3.ObjectKey (bucketPath <> "/" <> release)
-          releaseFilePath = toDir </> T.unpack release
 
       -- download the release zip file
       downloadFileFromS3 env bucketName objectKey releaseFilePath Nothing
@@ -110,6 +110,15 @@ unpackRelease modifyContextFn release toDir = do
 
 unpackRelease' :: T.Text -> FilePath -> IOR ()
 unpackRelease' = unpackRelease id
+
+checkReleaseExists :: T.Text -> IOR ()
+checkReleaseExists release = do
+  env <- mkAwsEnv
+  (bucketName,objectKey) <- releaseS3Location release
+  exists <- liftIO $ fileExistsS3 env bucketName objectKey
+  when (not exists) $ do
+    error ("Release" <> T.unpack release <> " does not exist in S3")
+  return ()
 
 loadMergedContext :: ToolConfig -> IO JS.Value
 loadMergedContext tcfg = do
@@ -142,11 +151,33 @@ toFilePath path = case parseAbsFile path of
   Just p -> p
   Nothing -> error "Unable to parse directory"
 
+-- | get the location of the specifed release in S3
+releaseS3Location :: T.Text -> IOR (S3.BucketName, S3.ObjectKey)
+releaseS3Location release = do
+  tcfg <- getToolConfig
+  let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
+      objectKey = S3.ObjectKey (bucketPath <> "/" <> release)
+  return (bucketName,objectKey)
+
+fileExistsS3 :: Env -> S3.BucketName -> S3.ObjectKey -> IO Bool
+fileExistsS3 env bucketName objectKey = do
+  handling _ServiceError onServiceError $ do
+    runResourceT . runAWST env $ do
+      send (S3.headObject bucketName objectKey)
+      return True
+  where
+    onServiceError :: ServiceError -> IO Bool
+    onServiceError se | view serviceStatus se == notFound404 = return False
+                      | otherwise                            = throwing _ServiceError se
+
+downloadFileFromS3' :: Env -> S3.BucketName -> S3.ObjectKey -> FilePath -> Maybe Int -> IOR ()
+downloadFileFromS3' env bucketName  objectKey toFilePath retryAfter = do
+  info ("Downloading s3://" <> toText bucketName <> "/" <> toText objectKey <> " to " <> T.pack toFilePath)
+  liftIO $ downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter
 
 downloadFileFromS3 :: Env -> S3.BucketName -> S3.ObjectKey -> FilePath -> Maybe Int -> IO ()
 downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter = do
   handling _ServiceError onServiceError $ do
-    T.putStrLn ("Downloading s3://" <> toText bucketName <> "/" <> toText objectKey <> " to " <> T.pack toFilePath)
     runResourceT . runAWST env $ do
       resp <- send (S3.getObject bucketName objectKey)
       liftResourceT (_streamBody (view S3.gorsBody resp) $$+- sinkFile toFilePath)

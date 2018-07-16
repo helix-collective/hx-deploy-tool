@@ -22,10 +22,10 @@ getToolConfig :: IOR ToolConfig
 getToolConfig = fmap re_toolConfig ask
 
 -- | Generate log messages
-debug, info, error :: TL.Text -> IOR ()
-debug = logm L.Debug
-info = logm L.Info
-error = logm L.Error
+debug, info, lerror :: T.Text -> IOR ()
+debug t = logm L.Debug (TL.fromStrict t)
+info t = logm L.Info (TL.fromStrict t)
+lerror t = logm L.Error (TL.fromStrict t)
 
 -- | Flush the log - useful in a long running processs
 flushlog :: IOR ()
@@ -37,7 +37,7 @@ flushlog = do
 -- log messages in child action.
 scopeInfo :: T.Text -> IOR a -> IOR a
 scopeInfo text ma = do
-  info (TL.fromStrict text)
+  info text
   withReaderT indentLogger ma
   where
     indentLogger re = re{re_logger=L.logIndent (re_logger re)}

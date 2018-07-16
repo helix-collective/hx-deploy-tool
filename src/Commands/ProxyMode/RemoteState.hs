@@ -75,7 +75,7 @@ getSlaves remoteStateS3 = do
 updateState :: S3Path -> (State -> State) -> IOR ()
 updateState remoteStateS3 modf = do
   let s3Path = masterS3Path remoteStateS3
-  info (TL.fromStrict ("Updating remote state at " <> s3Path))
+  info ("Updating remote state at " <> s3Path)
   env <- mkAwsEnv
   state <- stateFromS3 env s3Path
   let state' = modf state

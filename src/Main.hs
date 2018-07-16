@@ -13,7 +13,8 @@ import qualified Log as L
 
 import ADL.Config(ToolConfig(..), LetsEncryptConfig(..), DeployMode(..))
 import ADL.Core(adlFromJsonFile', AdlValue)
-import Control.Exception(finally, catch, SomeException)
+import Control.Exception(SomeException)
+import Control.Monad.Catch(finally,catch)
 import Control.Monad.Reader(runReaderT)
 import Data.Monoid
 import HelpText(helpText)

@@ -26,11 +26,13 @@ import ADL.Release(ReleaseConfig(..))
 import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..), MachineLabel(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
-import Util(unpackRelease,fetchDeployContext)
+import Util(unpackRelease,fetchDeployContext, checkReleaseExists)
 import Commands.ProxyMode.Types
 import Commands.ProxyMode.LocalState(localState)
 import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path)
 import Control.Concurrent(threadDelay)
+import Control.Exception(SomeException)
+import Control.Monad.Catch(catch)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
 import Control.Monad(when)
@@ -43,7 +45,7 @@ import Data.Time.Clock(addUTCTime,diffUTCTime,getCurrentTime)
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory, removeDirectoryRecursive)
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Process(callCommand)
-import Types(IOR, REnv(..), getToolConfig, scopeInfo, flushlog)
+import Types(IOR, REnv(..), getToolConfig, scopeInfo, flushlog, info, lerror)
 
 -- | Show the proxy system status, specifically the endpoints and live deploys.
 showStatus :: Bool -> IOR ()
@@ -76,6 +78,7 @@ showStatus showSlaves = do
 -- | Create and start a deployment (if it's not already running)
 deploy :: T.Text -> IOR ()
 deploy release = do
+  checkReleaseExists release
   scopeInfo ("Creating deploy " <> release) $ do
     pm <- getProxyModeConfig
     tcfg <- getToolConfig
@@ -133,13 +136,17 @@ slaveUpdate (Just repeat) = loop
   where
     loop = do
       t0 <- liftIO $ getCurrentTime
-      slaveUpdate_
+      catch slaveUpdate_ ehandler
       flushlog
       liftIO $ do
         t1 <- getCurrentTime
         let delay = floor (toRational (diffUTCTime (addUTCTime (fromIntegral repeat) t0) t1))
         when (delay > 0) (threadDelay (delay * 1000000))
       loop
+
+    ehandler e = do
+      lerror ("Exception: " <> T.pack (show (e::SomeException)))
+      info "(slave state not updated)"
 
 slaveUpdate_:: IOR ()
 slaveUpdate_ = do
@@ -158,7 +165,7 @@ slaveUpdate_ = do
 select  :: T.Text -> IOR ()
 select release = do
   let endpoint = "main"
-
+  checkReleaseExists release
   pm <- getProxyModeConfig
   origState <- getState
   deploy release

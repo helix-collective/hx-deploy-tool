@@ -185,6 +185,7 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       , "  error_log   /dev/stderr;"
       , ""
       , "  sendfile        on;"
+      , "  server_names_hash_bucket_size " <> serverNamesHashBucketSize <> ";"
       , ""
       , "  keepalive_timeout  65;"
       , ""
@@ -197,6 +198,10 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       concat (map serverBlock eps) <>
       [ "}"
       ]
+
+    -- The default of 64 or 32 is doesn't seem to be enought to handle long host names
+    serverNamesHashBucketSize = "128"
+
     serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},Just d) =
       [ "  server {"
       , "    listen 80;"
