@@ -161,7 +161,7 @@ slaveUpdate_ = do
     writeSlaveState remoteStateS3 label state
 
 -- Make the specified release the live deploy on the endpoint called "main".
--- Any existing deploy on that endpoint will be shut down
+-- Any other existing deploy on that endpoint will be shut down
 select  :: T.Text -> IOR ()
 select release = do
   let endpoint = "main"
@@ -172,7 +172,7 @@ select release = do
   connect endpoint release
   case SM.lookup endpoint (s_connections origState) of
     Nothing -> return ()
-    Just deployLabel -> undeploy deployLabel
+    Just deployLabel -> when (deployLabel /= release) (undeploy deployLabel)
 
 -- | Allocate an open port in the configured range
 allocatePort :: ProxyModeConfig -> State -> IO Word32
