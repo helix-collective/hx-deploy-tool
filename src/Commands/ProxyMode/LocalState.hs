@@ -132,7 +132,7 @@ getState = do
   stateFile <- getStateFile
   exists <- liftIO $ doesFileExist stateFile
   case exists of
-    True -> liftIO $ adlFromJsonFile' stateFile
+    True  -> liftIO $ adlFromJsonFile' stateFile
     False -> return emptyState
 
 getProxyDir :: IOR FilePath
@@ -207,6 +207,7 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       , "    listen 80;"
       , "    server_name " <> ep_serverName ep <> ";"
       , "    location / {"
+      , "      proxy_set_header Host $host;"
       , "      proxy_pass http://localhost:" <> showText (d_port d) <> "/;"
       , "    }"
       , "  }"
@@ -230,6 +231,7 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       , "    ssl_certificate " <> ep_sslCertDir ep <> "/fullchain.pem;"
       , "    ssl_certificate_key " <> ep_sslCertDir ep <> "/privkey.pem;"
       , "    location / {"
+      , "      proxy_set_header Host $host;"
       , "      proxy_pass http://localhost:" <> showText (d_port d) <> "/;"
       , "    }"
       , "  }"
