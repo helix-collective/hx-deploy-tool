@@ -14,6 +14,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Conduit.List as CL
 import qualified Network.AWS.S3 as S3
+import qualified Blobs.S3 as S3
 
 import Control.Exception.Lens
 import Control.Monad.IO.Class
@@ -32,7 +33,6 @@ import ADL.Core(adlFromByteString, adlToByteString, textFromParseContext, ParseR
 import ADL.State(State(..), Deploy(..))
 import Commands.ProxyMode.Types
 import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
-import Util(mkAwsEnv, splitS3Path)
 
 type S3Path = T.Text
 
@@ -45,12 +45,12 @@ remoteState  remoteStateS3 = StateAccess {
 
 getState :: S3Path -> IOR State
 getState remoteStateS3 = do
-  env <- mkAwsEnv
+  env <- S3.mkAwsEnv
   stateFromS3 env (masterS3Path remoteStateS3)
 
 getSlaves :: S3Path -> IOR [(T.Text, State)]
 getSlaves remoteStateS3 = do
-  env <- mkAwsEnv
+  env <- S3.mkAwsEnv
   labels <- getSlaveLabels env
   for labels $ \label -> do
     state <- stateFromS3 env (slaveS3Path remoteStateS3 label)
@@ -58,7 +58,7 @@ getSlaves remoteStateS3 = do
   where
     getSlaveLabels :: Env -> IOR [T.Text]
     getSlaveLabels env = do
-      let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (remoteStateS3 <> "/slaves")
+      let (bucketName,S3.ObjectKey bucketPath) = S3.splitPath (remoteStateS3 <> "/slaves")
           listObjectReq = set S3.loPrefix (Just bucketPath) (S3.listObjects bucketName)
       objects <- runResourceT . runAWST env $ do
         paginate listObjectReq $$ CL.foldMap (view S3.lorsContents)
@@ -76,19 +76,19 @@ updateState :: S3Path -> (State -> State) -> IOR ()
 updateState remoteStateS3 modf = do
   let s3Path = masterS3Path remoteStateS3
   info ("Updating remote state at " <> s3Path)
-  env <- mkAwsEnv
+  env <- S3.mkAwsEnv
   state <- stateFromS3 env s3Path
   let state' = modf state
   stateToS3 env s3Path state'
 
 writeSlaveState :: S3Path -> T.Text -> State -> IOR ()
 writeSlaveState remoteStateS3 label state = do
-  env <- mkAwsEnv
+  env <- S3.mkAwsEnv
   stateToS3 env (slaveS3Path remoteStateS3 label) state
 
 stateFromS3 :: Env -> S3Path -> IOR State
 stateFromS3 env s3Path = do
-  let (bucketName,objectKey) = splitS3Path s3Path
+  let (bucketName,objectKey) = S3.splitPath s3Path
   liftIO $ do
     handling _ServiceError onServiceError $ do
       runResourceT . runAWST env $ do
@@ -106,7 +106,7 @@ stateFromS3 env s3Path = do
 
 stateToS3 :: Env -> S3Path -> State -> IOR ()
 stateToS3 env s3Path state = do
-  let (bucketName,objectKey) = splitS3Path s3Path
+  let (bucketName,objectKey) = S3.splitPath s3Path
   liftIO $ do
     runResourceT . runAWST env $ do
       let bs = adlToByteString state

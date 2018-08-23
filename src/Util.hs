@@ -5,36 +5,28 @@ import qualified ADL.Core.StringMap as SM
 import qualified Data.Aeson as JS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Base64 as B64
-import qualified Data.Conduit.List as CL
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
 import qualified Log as L
-import qualified Network.AWS.ECR as ECR
-import qualified Network.AWS.S3 as S3
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
 
 import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile')
+import Blobs(releaseBlobStore, deployContextBlobStore, BlobStore(..), BlobName)
 import Codec.Archive.Zip(withArchive, unpackInto)
 import Control.Concurrent(threadDelay)
-import Control.Exception.Lens
 import Control.Monad(when)
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.Reader
-import Control.Monad.Trans.AWS
-import Control.Monad.Trans.Resource
-import Control.Lens
 import Data.List(sortOn)
 import Data.Maybe(fromMaybe)
 import Data.Monoid
-import Data.Conduit((.|), ($$), ($$+-))
-import Data.Conduit.Binary(sinkFile)
 import Data.Foldable(for_)
 import Data.Time.Clock.POSIX(getCurrentTime)
 import Data.Traversable(for)
@@ -42,41 +34,35 @@ import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExis
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Posix.Files(createSymbolicLink, removeLink)
 import System.IO(stdout, withFile, hIsEOF, IOMode(..))
-import System.Process(callProcess,callCommand)
-import Network.AWS.Data.Body(RsBody(..))
-import Network.AWS.Data.Text(ToText(..))
-import Network.HTTP.Types.Status(notFound404)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 
-mkAwsEnv :: IOR Env
-mkAwsEnv = do
-  logger <- fmap re_logger ask
-  liftIO $ do
-    env0 <- newEnv Discover
-    return (env0 & envLogger .~ (L.awsLogger logger))
-
-splitS3Path :: T.Text -> (S3.BucketName,S3.ObjectKey)
-splitS3Path s3Path = case T.stripPrefix "s3://" s3Path of
-  Nothing -> error "s3Path must start with s3://"
-  (Just s) ->
-    case T.breakOn "/" s of
-      (_,"") -> error "s3Path must include a key"
-      (b,k) -> (S3.BucketName b,S3.ObjectKey (T.tail k))
-
---- Download the infrastructure context files from S3
+--- Download the infrastructure context files from the blobstore
 fetchDeployContext :: Maybe Int -> IOR ()
 fetchDeployContext retryAfter = do
-  scopeInfo "Fetching deploy context from AWS" $ do
+  scopeInfo "Fetching deploy context from store" $ do
+    bs <- deployContextBlobStore
     tcfg <- getToolConfig
-    env <- mkAwsEnv
     do
       let cacheDir = T.unpack (tc_contextCache tcfg)
       liftIO $ createDirectoryIfMissing True cacheDir
       for_ (tc_deployContextFiles tcfg) $ \cf -> do
         let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
-            (bucketName,objectKey) = splitS3Path (dcf_source cf)
-        downloadFileFromS3' env bucketName objectKey cacheFilePath retryAfter
+        case retryAfter of
+          Nothing -> return ()
+          Just delay -> await bs (dcf_sourceName cf) delay
+        info ("Downloading " <> dcf_sourceName cf <> " from " <> bs_label bs <> " to " <> T.pack cacheFilePath)
+        liftIO $ bs_fetchToFile bs (dcf_sourceName cf) cacheFilePath
+ where
+   await:: BlobStore -> BlobName -> Int -> IOR ()
+   await bs name delaySecs = do
+     exists <- liftIO $ bs_exists bs name
+     case exists of
+       True -> return ()
+       False -> do
+         info ("Waiting for "<> name <> " in " <> bs_label bs)
+         liftIO $ threadDelay (1000000 * delaySecs)
+         await bs name delaySecs
 
 -- unpack a release into the specified directory, and expand any templates
 --
@@ -86,14 +72,13 @@ unpackRelease :: (JS.Value -> JS.Value) -> T.Text -> FilePath -> IOR ()
 unpackRelease modifyContextFn release toDir = do
   scopeInfo ("Unpacking release " <> " to " <> T.pack toDir) $ do
     tcfg <- getToolConfig
-    env <- mkAwsEnv
-    (bucketName,objectKey) <- releaseS3Location release
+    bs <- releaseBlobStore
     liftIO $ do
       let releaseFilePath = toDir </> T.unpack release
       createDirectoryIfMissing True toDir
 
       -- download the release zip file
-      downloadFileFromS3 env bucketName objectKey releaseFilePath Nothing
+      bs_fetchToFile bs release releaseFilePath
 
       -- expand the zip file
       withArchive (toFilePath releaseFilePath) (unpackInto (toDirPath toDir))
@@ -108,14 +93,10 @@ unpackRelease modifyContextFn release toDir = do
       for_ (rc_templates rcfg) $ \templatePath -> do
         expandTemplateFile ctx (toDir </> T.unpack templatePath)
 
-unpackRelease' :: T.Text -> FilePath -> IOR ()
-unpackRelease' = unpackRelease id
-
 checkReleaseExists :: T.Text -> IOR ()
 checkReleaseExists release = do
-  env <- mkAwsEnv
-  (bucketName,objectKey) <- releaseS3Location release
-  exists <- liftIO $ fileExistsS3 env bucketName objectKey
+  bs <- releaseBlobStore
+  exists <- liftIO $ bs_exists bs release
   when (not exists) $ do
     error ("Release " <> T.unpack release <> " does not exist in S3")
   return ()
@@ -150,42 +131,3 @@ toFilePath :: FilePath -> Path Abs File
 toFilePath path = case parseAbsFile path of
   Just p -> p
   Nothing -> error "Unable to parse directory"
-
--- | get the location of the specifed release in S3
-releaseS3Location :: T.Text -> IOR (S3.BucketName, S3.ObjectKey)
-releaseS3Location release = do
-  tcfg <- getToolConfig
-  let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
-      objectKey = S3.ObjectKey (bucketPath <> "/" <> release)
-  return (bucketName,objectKey)
-
-fileExistsS3 :: Env -> S3.BucketName -> S3.ObjectKey -> IO Bool
-fileExistsS3 env bucketName objectKey = do
-  handling _ServiceError onServiceError $ do
-    runResourceT . runAWST env $ do
-      send (S3.headObject bucketName objectKey)
-      return True
-  where
-    onServiceError :: ServiceError -> IO Bool
-    onServiceError se | view serviceStatus se == notFound404 = return False
-                      | otherwise                            = throwing _ServiceError se
-
-downloadFileFromS3' :: Env -> S3.BucketName -> S3.ObjectKey -> FilePath -> Maybe Int -> IOR ()
-downloadFileFromS3' env bucketName  objectKey toFilePath retryAfter = do
-  info ("Downloading s3://" <> toText bucketName <> "/" <> toText objectKey <> " to " <> T.pack toFilePath)
-  liftIO $ downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter
-
-downloadFileFromS3 :: Env -> S3.BucketName -> S3.ObjectKey -> FilePath -> Maybe Int -> IO ()
-downloadFileFromS3 env bucketName  objectKey toFilePath retryAfter = do
-  handling _ServiceError onServiceError $ do
-    runResourceT . runAWST env $ do
-      resp <- send (S3.getObject bucketName objectKey)
-      liftResourceT (_streamBody (view S3.gorsBody resp) $$+- sinkFile toFilePath)
-  where
-   onServiceError :: ServiceError -> IO ()
-   onServiceError se =
-     case retryAfter of
-        Nothing -> throwing _ServiceError se
-        (Just delaySecs) -> do
-          threadDelay (1000000 * delaySecs)
-          downloadFileFromS3 env bucketName objectKey toFilePath retryAfter

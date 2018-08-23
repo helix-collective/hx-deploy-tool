@@ -34,7 +34,7 @@ main = do
 
     ["fetch-context"]                         -> runWithConfigAndLog (U.fetchDeployContext Nothing)
     ["fetch-context","--retry"]               -> runWithConfigAndLog (U.fetchDeployContext (Just 10))
-    ["unpack", release, toDir]                -> runWithConfigAndLog (U.unpackRelease' (T.pack release) toDir)
+    ["unpack", release, toDir]                -> runWithConfigAndLog (U.unpackRelease id (T.pack release) toDir)
     ["aws-docker-login-cmd"]                  -> runWithConfigAndLog (C.awsDockerLoginCmd)
 
     ["select", release]                       -> runWithConfigAndLog (C.select (T.pack release))

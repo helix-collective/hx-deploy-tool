@@ -12,14 +12,15 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
 import qualified Log as L
 import qualified Network.AWS.ECR as ECR
-import qualified Network.AWS.S3 as S3
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
 import qualified Commands.ProxyMode as P
+import qualified Blobs.S3 as S3
 
 import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile')
+import Blobs(releaseBlobStore, BlobStore(..))
 import Codec.Archive.Zip(withArchive, unpackInto)
 import Control.Concurrent(threadDelay)
 import Control.Exception.Lens
@@ -33,8 +34,6 @@ import Control.Lens
 import Data.List(sortOn)
 import Data.Maybe(fromMaybe)
 import Data.Monoid
-import Data.Conduit((.|), ($$), ($$+-))
-import Data.Conduit.Binary(sinkFile)
 import Data.Foldable(for_)
 import Data.Time.Clock.POSIX(getCurrentTime)
 import Data.Traversable(for)
@@ -42,13 +41,10 @@ import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExis
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Posix.Files(createSymbolicLink, removeLink)
 import System.IO(stdout, withFile, hIsEOF, IOMode(..))
-import System.Process(callProcess,callCommand)
-import Network.AWS.Data.Body(RsBody(..))
-import Network.AWS.Data.Text(ToText(..))
-import Network.HTTP.Types.Status(notFound404)
+import System.Process(callCommand)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
-import Util(mkAwsEnv, splitS3Path,downloadFileFromS3,unpackRelease', fetchDeployContext)
+import Util(unpackRelease, fetchDeployContext)
 
 -- Make the specified release the live release, replacing any existing release.
 select :: T.Text -> IOR ()
@@ -74,7 +70,7 @@ selectNoProxy release = do
     liftIO $ createDirectoryIfMissing True newReleaseDir
 
     -- unpack new release
-    unpackRelease' release newReleaseDir
+    unpackRelease id release newReleaseDir
 
     -- Run the prestart command first, to pull/download any dependences.
     -- we do the before stopping the existing release to minimise startup time.
@@ -100,28 +96,21 @@ selectNoProxy release = do
           rcfg <- adlFromJsonFile' "release.json"
           callCommand (T.unpack (rc_startCommand rcfg))
 
+
 -- List the releases available for installation
 listReleases :: IOR ()
-listReleases= do
-  tcfg <- getToolConfig
-  env <- mkAwsEnv
+listReleases = do
+  bs <- releaseBlobStore
   liftIO $ do
-    let (bucketName,S3.ObjectKey bucketPath) = splitS3Path (tc_releasesS3 tcfg)
-        listObjectReq = set S3.loPrefix (Just bucketPath) (S3.listObjects bucketName)
-    runResourceT . runAWST env $ do
-      objects <- paginate listObjectReq $$ CL.foldMap (view S3.lorsContents)
-      let sortedObjects = reverse (sortOn (view S3.oLastModified) objects)
-      for_ sortedObjects $ \object ->
-        case (view S3.oKey object ^? S3.keyName '/') of
-          Nothing -> return ()
-          (Just package) -> liftIO (T.putStrLn package)
+    names <- bs_names bs
+    mapM_ T.putStrLn names
 
 -- Output the command line to docker login to access the default
 -- repository
 awsDockerLoginCmd :: IOR ()
 awsDockerLoginCmd = do
   tcfg <- getToolConfig
-  env <- mkAwsEnv
+  env <- S3.mkAwsEnv
   liftIO $ do
     runResourceT . runAWST env $ do
       resp <- send ECR.getAuthorizationToken

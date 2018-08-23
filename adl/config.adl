@@ -12,7 +12,13 @@ struct ToolConfig {
     FilePath releasesDir = "/opt/releases";
     FilePath contextCache = "/opt/etc/deployment";
     FilePath logFile = "/opt/var/log/hx-deploy-tool.log";
-    S3Path releasesS3;
+
+    /// The storage location for release zip files
+    BlobStoreConfig releases;
+
+    /// The storage location for deployment context files
+    BlobStoreConfig deployContext;
+
     Vector<DeployContextFile> deployContextFiles;
     DeployMode deployMode = "select";
 };
@@ -21,6 +27,12 @@ union DeployMode {
    Void select;
    ProxyModeConfig proxy;
 };
+
+union BlobStoreConfig {
+   S3Path s3;
+   FilePath localdir;
+};
+
 
 struct ProxyModeConfig {
     /// The configured endpoints.
@@ -57,7 +69,7 @@ union EndPointType {
 struct DeployContextFile
 {
     FilePath name;
-    S3Path source;
+    String sourceName;
 };
 
 union Verbosity

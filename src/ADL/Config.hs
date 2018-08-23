@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
+    BlobStoreConfig(..),
     DeployContextFile(..),
     DeployMode(..),
     EndPoint(..),
@@ -23,26 +24,44 @@ import qualified Data.Text as T
 import qualified Data.Word
 import qualified Prelude
 
+data BlobStoreConfig
+    = BlobStoreConfig_s3 ADL.Types.S3Path
+    | BlobStoreConfig_localdir ADL.Types.FilePath
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue BlobStoreConfig where
+    atype _ = "config.BlobStoreConfig"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        BlobStoreConfig_s3 v -> genUnionValue "s3" v
+        BlobStoreConfig_localdir v -> genUnionValue "localdir" v
+        )
+    
+    jsonParser
+        =   parseUnionValue "s3" BlobStoreConfig_s3
+        <|> parseUnionValue "localdir" BlobStoreConfig_localdir
+        <|> parseFail "expected a BlobStoreConfig"
+
 data DeployContextFile = DeployContextFile
     { dcf_name :: ADL.Types.FilePath
-    , dcf_source :: ADL.Types.S3Path
+    , dcf_sourceName :: T.Text
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkDeployContextFile :: ADL.Types.FilePath -> ADL.Types.S3Path -> DeployContextFile
-mkDeployContextFile name source = DeployContextFile name source
+mkDeployContextFile :: ADL.Types.FilePath -> T.Text -> DeployContextFile
+mkDeployContextFile name sourceName = DeployContextFile name sourceName
 
 instance AdlValue DeployContextFile where
     atype _ = "config.DeployContextFile"
     
     jsonGen = genObject
         [ genField "name" dcf_name
-        , genField "source" dcf_source
+        , genField "sourceName" dcf_sourceName
         ]
     
     jsonParser = DeployContextFile
         <$> parseField "name"
-        <*> parseField "source"
+        <*> parseField "sourceName"
 
 data DeployMode
     = DeployMode_select
@@ -189,14 +208,15 @@ data ToolConfig = ToolConfig
     { tc_releasesDir :: ADL.Types.FilePath
     , tc_contextCache :: ADL.Types.FilePath
     , tc_logFile :: ADL.Types.FilePath
-    , tc_releasesS3 :: ADL.Types.S3Path
+    , tc_releases :: BlobStoreConfig
+    , tc_deployContext :: BlobStoreConfig
     , tc_deployContextFiles :: [DeployContextFile]
     , tc_deployMode :: DeployMode
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkToolConfig :: ADL.Types.S3Path -> [DeployContextFile] -> ToolConfig
-mkToolConfig releasesS3 deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" releasesS3 deployContextFiles DeployMode_select
+mkToolConfig :: BlobStoreConfig -> BlobStoreConfig -> [DeployContextFile] -> ToolConfig
+mkToolConfig releases deployContext deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" releases deployContext deployContextFiles DeployMode_select
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -205,7 +225,8 @@ instance AdlValue ToolConfig where
         [ genField "releasesDir" tc_releasesDir
         , genField "contextCache" tc_contextCache
         , genField "logFile" tc_logFile
-        , genField "releasesS3" tc_releasesS3
+        , genField "releases" tc_releases
+        , genField "deployContext" tc_deployContext
         , genField "deployContextFiles" tc_deployContextFiles
         , genField "deployMode" tc_deployMode
         ]
@@ -214,7 +235,8 @@ instance AdlValue ToolConfig where
         <$> parseFieldDef "releasesDir" "/opt/releases"
         <*> parseFieldDef "contextCache" "/opt/etc/deployment"
         <*> parseFieldDef "logFile" "/opt/var/log/hx-deploy-tool.log"
-        <*> parseField "releasesS3"
+        <*> parseField "releases"
+        <*> parseField "deployContext"
         <*> parseField "deployContextFiles"
         <*> parseFieldDef "deployMode" DeployMode_select
 
