@@ -188,6 +188,7 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       , "  server_names_hash_bucket_size " <> serverNamesHashBucketSize <> ";"
       , ""
       , "  keepalive_timeout  65;"
+      , "  client_max_body_size 0;"
       , ""
       , "  proxy_buffering on;"
       , "  proxy_temp_path proxy_temp 1 2;"
