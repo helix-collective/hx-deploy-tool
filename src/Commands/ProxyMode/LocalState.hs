@@ -192,8 +192,17 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       , ""
       , "  proxy_buffering on;"
       , "  proxy_temp_path proxy_temp 1 2;"
+      , "  proxy_http_version 1.1;"
       , ""
       , "  charset utf-8;"
+      , ""
+      , "  # Run a default server just to keep ALB health checks happy"
+      , "  server {"
+      , "    listen 80 default_server;"
+      , "    location /health-check {"
+      , "       return 200;"
+      , "    }"
+      , "  }"
       , ""
       ] <>
       concat (map serverBlock eps) <>
