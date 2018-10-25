@@ -23,12 +23,15 @@ import System.Exit(exitWith,ExitCode(..))
 import System.FilePath(takeDirectory, (</>))
 import System.Posix.Files(fileExist)
 import Types(REnv(..),IOR, getToolConfig)
+import Data.Version(showVersion)
+import Paths_hx_deploy_tool(version)
 
 main :: IO ()
 main = do
   args <- getArgs
   case args of
     ["help"]                                  -> help
+    ["--version"]                             -> putStrLn (showVersion version)
     ["list-releases"]                         -> runWithConfig       (C.listReleases)
     ["show-log"]                              -> runWithConfig       (C.showLog)
 
@@ -126,6 +129,7 @@ usageText = "\
   \  hx-deploy-tool unpack <release> <todir>\n\
   \  hx-deploy-tool show-log\n\
   \  hx-deploy-tool aws-docker-login-cmd\n\
+  \  hx-deploy-tool --version\n\
   \\n\
   \Deployment with a proxy:\n\
   \  hx-deploy-tool proxy-status [--show-slaves]\n\

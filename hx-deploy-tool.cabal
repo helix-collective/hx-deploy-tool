@@ -36,6 +36,7 @@ executable hx-deploy-tool
                      , Commands.ProxyMode.RemoteState
                      , HelpText
                      , Log
+                     , Paths_hx_deploy_tool
                      , Types
                      , Util
   default-language:    Haskell2010
