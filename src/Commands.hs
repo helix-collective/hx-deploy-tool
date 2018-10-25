@@ -87,14 +87,14 @@ selectNoProxy release = do
           rcfg <- adlFromJsonFile' "release.json"
           callCommand (T.unpack (rc_stopCommand rcfg))
 
-      scopeInfo "Symlinking new release" $ liftIO $ do
-        when currentExists $ removeLink currentReleaseLink
-        createSymbolicLink newReleaseDir currentReleaseLink
+    scopeInfo "Symlinking new release" $ liftIO $ do
+      when currentExists $ removeLink currentReleaseLink
+      createSymbolicLink newReleaseDir currentReleaseLink
 
-      scopeInfo "Starting new release" $ liftIO $ do
-        withCurrentDirectory currentReleaseLink $ do
-          rcfg <- adlFromJsonFile' "release.json"
-          callCommand (T.unpack (rc_startCommand rcfg))
+    scopeInfo "Starting new release" $ liftIO $ do
+      withCurrentDirectory currentReleaseLink $ do
+        rcfg <- adlFromJsonFile' "release.json"
+        callCommand (T.unpack (rc_startCommand rcfg))
 
 
 -- List the releases available for installation
