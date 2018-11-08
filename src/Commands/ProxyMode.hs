@@ -7,7 +7,8 @@ module Commands.ProxyMode(
   connect,
   disconnect,
   slaveUpdate,
-  restartProxy
+  restartProxy,
+  generateSslCertificate
   ) where
 
 import qualified ADL.Core.StringMap as SM
@@ -29,7 +30,7 @@ import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Util(unpackRelease,fetchDeployContext, checkReleaseExists)
 import Commands.ProxyMode.Types
-import Commands.ProxyMode.LocalState(localState, restartLocalProxy)
+import Commands.ProxyMode.LocalState(localState, restartLocalProxy, generateLocalSslCertificate)
 import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path)
 import Control.Concurrent(threadDelay)
 import Control.Exception(SomeException)
@@ -66,7 +67,7 @@ showStatus showSlaves = do
       for_ (pmEndPoints pm) $ \ep -> do
         let etype = case ep_etype ep of
               Ep_httpOnly -> "(" <> ep_serverName ep <> ":80)"
-              Ep_httpsWithRedirect -> "(" <> ep_serverName ep <> ":80,442)"
+              Ep_httpsWithRedirect _ -> "(" <> ep_serverName ep <> ":80,442)"
         let connected = case SM.lookup (ep_label ep) (s_connections state) of
               Nothing -> "(not connected)"
               Just deployLabel -> deployLabel
@@ -210,6 +211,13 @@ restartProxy = do
   pm <- getProxyModeConfig
   case pm_remoteStateS3 pm of
     Nothing -> restartLocalProxy
+    _ -> return ()
+
+generateSslCertificate :: IOR ()
+generateSslCertificate = do
+  pm <- getProxyModeConfig
+  case pm_remoteStateS3 pm of
+    Nothing -> generateLocalSslCertificate
     _ -> return ()
 
 

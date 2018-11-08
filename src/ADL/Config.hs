@@ -8,6 +8,8 @@ module ADL.Config(
     LetsEncryptConfig(..),
     MachineLabel(..),
     ProxyModeConfig(..),
+    SslCertMode(..),
+    SslCertPaths(..),
     ToolConfig(..),
     Verbosity(..),
 ) where
@@ -84,13 +86,12 @@ instance AdlValue DeployMode where
 data EndPoint = EndPoint
     { ep_label :: ADL.Types.EndPointLabel
     , ep_serverName :: T.Text
-    , ep_sslCertDir :: T.Text
     , ep_etype :: EndPointType
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkEndPoint :: ADL.Types.EndPointLabel -> T.Text -> T.Text -> EndPointType -> EndPoint
-mkEndPoint label serverName sslCertDir etype = EndPoint label serverName sslCertDir etype
+mkEndPoint :: ADL.Types.EndPointLabel -> T.Text -> EndPointType -> EndPoint
+mkEndPoint label serverName etype = EndPoint label serverName etype
 
 instance AdlValue EndPoint where
     atype _ = "config.EndPoint"
@@ -98,19 +99,17 @@ instance AdlValue EndPoint where
     jsonGen = genObject
         [ genField "label" ep_label
         , genField "serverName" ep_serverName
-        , genField "sslCertDir" ep_sslCertDir
         , genField "etype" ep_etype
         ]
     
     jsonParser = EndPoint
         <$> parseField "label"
         <*> parseField "serverName"
-        <*> parseField "sslCertDir"
         <*> parseField "etype"
 
 data EndPointType
     = Ep_httpOnly
-    | Ep_httpsWithRedirect
+    | Ep_httpsWithRedirect SslCertMode
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 instance AdlValue EndPointType where
@@ -118,12 +117,12 @@ instance AdlValue EndPointType where
     
     jsonGen = genUnion (\jv -> case jv of
         Ep_httpOnly -> genUnionVoid "httpOnly"
-        Ep_httpsWithRedirect -> genUnionVoid "httpsWithRedirect"
+        Ep_httpsWithRedirect v -> genUnionValue "httpsWithRedirect" v
         )
     
     jsonParser
         =   parseUnionVoid "httpOnly" Ep_httpOnly
-        <|> parseUnionVoid "httpsWithRedirect" Ep_httpsWithRedirect
+        <|> parseUnionValue "httpsWithRedirect" Ep_httpsWithRedirect
         <|> parseFail "expected a EndPointType"
 
 data LetsEncryptConfig = LetsEncryptConfig
@@ -204,10 +203,53 @@ instance AdlValue ProxyModeConfig where
         <*> parseFieldDef "dynamicPortRange" ((,) 8000 8100)
         <*> parseFieldDef "slaveLabel" MachineLabel_ec2InstanceId
 
+data SslCertMode
+    = Scm_generated
+    | Scm_explicit SslCertPaths
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue SslCertMode where
+    atype _ = "config.SslCertMode"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        Scm_generated -> genUnionVoid "generated"
+        Scm_explicit v -> genUnionValue "explicit" v
+        )
+    
+    jsonParser
+        =   parseUnionVoid "generated" Scm_generated
+        <|> parseUnionValue "explicit" Scm_explicit
+        <|> parseFail "expected a SslCertMode"
+
+data SslCertPaths = SslCertPaths
+    { scp_sslCertificate :: ADL.Types.FilePath
+    , scp_sslCertificateKey :: ADL.Types.FilePath
+    }
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+mkSslCertPaths :: ADL.Types.FilePath -> ADL.Types.FilePath -> SslCertPaths
+mkSslCertPaths sslCertificate sslCertificateKey = SslCertPaths sslCertificate sslCertificateKey
+
+instance AdlValue SslCertPaths where
+    atype _ = "config.SslCertPaths"
+    
+    jsonGen = genObject
+        [ genField "sslCertificate" scp_sslCertificate
+        , genField "sslCertificateKey" scp_sslCertificateKey
+        ]
+    
+    jsonParser = SslCertPaths
+        <$> parseField "sslCertificate"
+        <*> parseField "sslCertificateKey"
+
 data ToolConfig = ToolConfig
     { tc_releasesDir :: ADL.Types.FilePath
     , tc_contextCache :: ADL.Types.FilePath
     , tc_logFile :: ADL.Types.FilePath
+    , tc_letsencryptPrefixDir :: ADL.Types.FilePath
+    , tc_letsencryptWwwDir :: ADL.Types.FilePath
+    , tc_autoCertName :: T.Text
+    , tc_autoCertContactEmail :: T.Text
     , tc_releases :: BlobStoreConfig
     , tc_deployContext :: BlobStoreConfig
     , tc_deployContextFiles :: [DeployContextFile]
@@ -216,7 +258,7 @@ data ToolConfig = ToolConfig
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: BlobStoreConfig -> BlobStoreConfig -> [DeployContextFile] -> ToolConfig
-mkToolConfig releases deployContext deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" releases deployContext deployContextFiles DeployMode_select
+mkToolConfig releases deployContext deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContext deployContextFiles DeployMode_select
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -225,6 +267,10 @@ instance AdlValue ToolConfig where
         [ genField "releasesDir" tc_releasesDir
         , genField "contextCache" tc_contextCache
         , genField "logFile" tc_logFile
+        , genField "letsencryptPrefixDir" tc_letsencryptPrefixDir
+        , genField "letsencryptWwwDir" tc_letsencryptWwwDir
+        , genField "autoCertName" tc_autoCertName
+        , genField "autoCertContactEmail" tc_autoCertContactEmail
         , genField "releases" tc_releases
         , genField "deployContext" tc_deployContext
         , genField "deployContextFiles" tc_deployContextFiles
@@ -235,6 +281,10 @@ instance AdlValue ToolConfig where
         <$> parseFieldDef "releasesDir" "/opt/releases"
         <*> parseFieldDef "contextCache" "/opt/etc/deployment"
         <*> parseFieldDef "logFile" "/opt/var/log/hx-deploy-tool.log"
+        <*> parseFieldDef "letsencryptPrefixDir" "/opt"
+        <*> parseFieldDef "letsencryptWwwDir" "/opt/var/www"
+        <*> parseFieldDef "autoCertName" "hxdeploytoolcert"
+        <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
         <*> parseField "deployContext"
         <*> parseField "deployContextFiles"

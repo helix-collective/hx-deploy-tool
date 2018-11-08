@@ -8,4 +8,6 @@ annotation EndPointType HaskellFieldPrefix "ep_";
 annotation ToolConfig HaskellFieldPrefix "tc_";
 annotation ProxyModeConfig HaskellFieldPrefix "pm_";
 annotation LetsEncryptConfig HaskellFieldPrefix "lec_";
+annotation SslCertMode HaskellFieldPrefix "scm_";
+annotation SslCertPaths HaskellFieldPrefix "scp_";
 };

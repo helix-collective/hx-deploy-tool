@@ -12,6 +12,13 @@ struct ToolConfig {
     FilePath releasesDir = "/opt/releases";
     FilePath contextCache = "/opt/etc/deployment";
     FilePath logFile = "/opt/var/log/hx-deploy-tool.log";
+    FilePath letsencryptPrefixDir = "/opt";
+    FilePath letsencryptWwwDir = "/opt/var/www";
+
+    /// If the deploy tool needs to generate an SSL certificate
+    /// using letsencrypt, it will be called this.
+    String autoCertName = "hxdeploytoolcert";
+    String autoCertContactEmail = "";
 
     /// The storage location for release zip files
     BlobStoreConfig releases;
@@ -57,13 +64,26 @@ union MachineLabel {
 struct EndPoint {
   EndPointLabel label;
   String serverName;
-  String sslCertDir;
   EndPointType etype;
 };
 
 union EndPointType {
   Void httpOnly;
-  Void httpsWithRedirect;
+  SslCertMode httpsWithRedirect;
+};
+
+union SslCertMode {
+  /// Use letsencrypt to generate a certificate
+  Void generated;
+
+  /// Use the existing certificate from the given file system
+  /// paths
+  SslCertPaths explicit;
+};
+
+struct SslCertPaths {
+  FilePath sslCertificate;
+  FilePath sslCertificateKey;
 };
 
 struct DeployContextFile
