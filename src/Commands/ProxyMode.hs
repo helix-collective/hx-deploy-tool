@@ -6,7 +6,8 @@ module Commands.ProxyMode(
   undeploy,
   connect,
   disconnect,
-  slaveUpdate
+  slaveUpdate,
+  restartProxy
   ) where
 
 import qualified ADL.Core.StringMap as SM
@@ -28,7 +29,7 @@ import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Util(unpackRelease,fetchDeployContext, checkReleaseExists)
 import Commands.ProxyMode.Types
-import Commands.ProxyMode.LocalState(localState)
+import Commands.ProxyMode.LocalState(localState, restartLocalProxy)
 import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path)
 import Control.Concurrent(threadDelay)
 import Control.Exception(SomeException)
@@ -203,6 +204,13 @@ updateState modf = do
   case pm_remoteStateS3 pm of
     Nothing -> sa_update localState modf
     (Just s3Path) -> sa_update (remoteState s3Path) modf
+
+restartProxy :: IOR ()
+restartProxy = do
+  pm <- getProxyModeConfig
+  case pm_remoteStateS3 pm of
+    Nothing -> restartLocalProxy
+    _ -> return ()
 
 
 getSlaveLabel :: IOR T.Text

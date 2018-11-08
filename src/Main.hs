@@ -48,6 +48,7 @@ main = do
     ["proxy-undeploy", deploy]                -> runWithConfigAndLog (P.undeploy (T.pack deploy))
     ["proxy-connect", endpoint, deploy]       -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
     ["proxy-disconnect", endpoint]            -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
+    ["proxy-restart"]                         -> runWithConfigAndLog (P.restartProxy)
     ["proxy-slave-update"]                    -> runWithConfigAndLog (P.slaveUpdate Nothing)
     ["proxy-slave-update", "--repeat", ssecs]  -> do
       secs <- readCheck ssecs
@@ -135,6 +136,7 @@ usageText = "\
   \  hx-deploy-tool proxy-status [--show-slaves]\n\
   \  hx-deploy-tool proxy-deploy <release>\n\
   \  hx-deploy-tool proxy-undeploy <release>\n\
+  \  hx-deploy-tool proxy-restart\n\
   \  hx-deploy-tool proxy-connect <endpoint> <release>\n\
   \  hx-deploy-tool proxy-disconnect <endpoint>\n\
   \  hx-deploy-tool proxy-slave-update [--repeat n]\n\

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Commands.ProxyMode.LocalState(
-  localState
+  localState,
+  restartLocalProxy
 ) where
 
 import qualified ADL.Core.StringMap as SM
@@ -74,18 +75,18 @@ stateUpdateActions endPointMap oldState newState
   where
     oldDeploys = SM.toMap (s_deploys oldState)
     newDeploys = SM.toMap (s_deploys newState)
-    oldEndPoints = (catMaybes . map getEndpointDeploy . SM.toList) (s_connections oldState)
-    newEndPoints = (catMaybes . map getEndpointDeploy . SM.toList) (s_connections newState)
+    oldEndPoints = (catMaybes . map (getEndpointDeploy endPointMap newState) . SM.toList) (s_connections oldState)
+    newEndPoints = (catMaybes . map (getEndpointDeploy endPointMap newState) . SM.toList) (s_connections newState)
     deploysToCreate = M.elems (M.difference newDeploys oldDeploys)
     deploysToUpdate = filter (\(d1,d2) -> d1 /= d2) (M.elems (M.intersectionWith (\d1 d2 -> (d1,d2)) oldDeploys newDeploys))
     deploysToDestroy = M.elems (M.difference oldDeploys newDeploys)
     updateDeploy (d1,d2) = [DestroyDeploy d1, CreateDeploy d2]
-    getEndpointDeploy :: (EndPointLabel,DeployLabel) -> Maybe (EndPoint,Deploy)
-    getEndpointDeploy (eplabel, dlabel) = do
-      endPoint <- find (\ep -> ep_label ep == eplabel)  endPointMap
-      deploy <- find (\d -> d_label d == dlabel) (SM.toMap (s_deploys newState))
-      return (endPoint,deploy)
 
+getEndpointDeploy :: M.Map EndPointLabel EndPoint -> State -> (EndPointLabel,DeployLabel) -> Maybe (EndPoint,Deploy)
+getEndpointDeploy endPointMap state (eplabel, dlabel) = do
+  endPoint <- find (\ep -> ep_label ep == eplabel)  endPointMap
+  deploy <- find (\d -> d_label d == dlabel) (SM.toMap (s_deploys state))
+  return (endPoint,deploy)
 
 -- | Execute the effects of a single action action
 executeAction :: StateAction -> IOR ()
@@ -147,6 +148,13 @@ getStateFile = do
   proxyDir <- getProxyDir
   return (proxyDir </> "state.json")
 
+restartLocalProxy :: IOR ()
+restartLocalProxy = do
+  state <- getState
+  pm <- getProxyModeConfig
+  let endPoints = (catMaybes . map (getEndpointDeploy endPointMap state) . SM.toList) (s_connections state)
+      endPointMap = SM.toMap (pm_endPoints pm)
+  executeAction (SetEndPoints endPoints)
 
 writeProxyDockerCompose :: FilePath -> IO ()
 writeProxyDockerCompose path = T.writeFile path (T.intercalate "\n" lines)
@@ -233,7 +241,13 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       [ "  server {"
       , "    listen 80;"
       , "    server_name " <> ep_serverName ep <> ";"
-      , "    return 301 https://$server_name$request_uri;"
+      , "    location '/.well-known/acme-challenge' {"
+      , "        default_type "text/plain";"
+      , "        alias /opt/var/www/.well-known/acme-challenge;"
+      , "    }"
+      , "    location / {"
+      , "      return 301 https://$server_name$request_uri;"
+      , "    }"
       , "  }"
       , "  server {"
       , "    listen       443 ssl;"
@@ -250,14 +264,13 @@ writeNginxConfig path eps = T.writeFile path (T.intercalate "\n" lines)
       [ "  server {"
       , "    listen 80;"
       , "    server_name " <> ep_serverName ep <> ";"
-      , "    return 503;"
-      , "  }"
-      , "  server {"
-      , "    listen       443 ssl;"
-      , "    server_name " <> ep_serverName ep <> ";"
-      , "    ssl_certificate " <> ep_sslCertDir ep <> "/fullchain.pem;"
-      , "    ssl_certificate_key " <> ep_sslCertDir ep <> "/privkey.pem;"
-      , "    return 503;"
+      , "    location '/.well-known/acme-challenge' {"
+      , "        default_type "text/plain";"
+      , "        alias /opt/var/www/.well-known/acme-challenge;"
+      , "    }"
+      , "    location / {"
+      , "      return 503;"
+      , "    }"
       , "  }"
       ]
 
