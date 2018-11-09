@@ -1,8 +1,17 @@
+flags: {}
 resolver: lts-10.10
 packages:
 - '.'
+- location:
+    git: git@github.com:timbod7/adl.git
+    commit: 8844fc2346f606e912d56d44a177e3fb5ca0d59d
+  subdirs:
+  - haskell/utils
+  - haskell/runtime
+  - haskell/compiler-lib
+  - haskell/compiler
+  extra-dep: true
 extra-deps: []
-flags: {}
 extra-package-dbs: []
 nix:
    packages: [zlib, bzip2]
