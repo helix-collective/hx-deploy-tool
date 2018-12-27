@@ -1,0 +1,17 @@
+#!/bin/bash
+# Run the adl compiler using the published docker container
+
+IMAGE=helixta/hxadl
+VERSION=0.11.1
+
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null && pwd )"
+docker run \
+  --interactive \
+  --rm \
+  --volume $ROOT:$ROOT \
+  --volume /etc/passwd:/etc/passwd \
+  --volume /etc/group:/etc/group \
+  --user $(id -u):$(id -g) \
+  --workdir $(pwd) \
+  $IMAGE:$VERSION \
+  adlc "$@"
