@@ -67,7 +67,7 @@ showStatus showSlaves = do
       for_ (pmEndPoints pm) $ \ep -> do
         let etype = case ep_etype ep of
               Ep_httpOnly -> "(" <> ep_serverName ep <> ":80)"
-              Ep_httpsWithRedirect _ -> "(" <> ep_serverName ep <> ":80,442)"
+              Ep_httpsWithRedirect _ -> "(" <> ep_serverName ep <> ":80,443)"
         let connected = case SM.lookup (ep_label ep) (s_connections state) of
               Nothing -> "(not connected)"
               Just deployLabel -> deployLabel
