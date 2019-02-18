@@ -171,8 +171,8 @@ generateLocalSslCertificate = do
     tcfg <- getToolConfig
     pm <- getProxyModeConfig
     proxyDir <- getProxyDir
-    let serverNames = [serverName |
-          EndPoint{ep_serverName=serverName,ep_etype=Ep_httpsWithRedirect Scm_generated} <- M.elems (SM.toMap (pm_endPoints pm))]
+    let serverNames = concat [serverNames |
+          EndPoint{ep_serverNames=serverNames,ep_etype=Ep_httpsWithRedirect Scm_generated} <- M.elems (SM.toMap (pm_endPoints pm))]
         ledir = tc_letsencryptPrefixDir tcfg
         lewwwdir = tc_letsencryptWwwDir tcfg
         certbotCmd = T.intercalate " " (
@@ -271,7 +271,7 @@ writeNginxConfig tcfg path eps = T.writeFile path (T.intercalate "\n" lines)
     serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},Just d) =
       [ "  server {"
       , "    listen 80;"
-      , "    server_name " <> ep_serverName ep <> ";"
+      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
       , "    location / {"
       , "      proxy_set_header Host $host;"
       , "      proxy_pass http://localhost:" <> showText (d_port d) <> "/;"
@@ -281,14 +281,14 @@ writeNginxConfig tcfg path eps = T.writeFile path (T.intercalate "\n" lines)
     serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},Nothing) =
       [ "  server {"
       , "    listen 80;"
-      , "    server_name " <> ep_serverName ep <> ";"
+      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
       , "    return 503;"
       , "  }"
       ]
     serverBlock (ep@EndPoint{ep_etype=Ep_httpsWithRedirect certMode},Just d) =
       [ "  server {"
       , "    listen 80;"
-      , "    server_name " <> ep_serverName ep <> ";"
+      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
       , "    location '/.well-known/acme-challenge' {"
       , "        default_type \"text/plain\";"
       , "        alias " <> tc_letsencryptWwwDir tcfg <> "/.well-known/acme-challenge;"
@@ -299,7 +299,7 @@ writeNginxConfig tcfg path eps = T.writeFile path (T.intercalate "\n" lines)
       , "  }"
       , "  server {"
       , "    listen       443 ssl;"
-      , "    server_name " <> ep_serverName ep <> ";"
+      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
       , "    ssl_certificate " <> sslCertPath certMode <> ";"
       , "    ssl_certificate_key " <> sslCertKeyPath certMode <> ";"
       , "    location / {"
@@ -311,7 +311,7 @@ writeNginxConfig tcfg path eps = T.writeFile path (T.intercalate "\n" lines)
     serverBlock (ep@EndPoint{ep_etype=Ep_httpsWithRedirect certMode},Nothing) =
       [ "  server {"
       , "    listen 80;"
-      , "    server_name " <> ep_serverName ep <> ";"
+      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
       , "    location '/.well-known/acme-challenge' {"
       , "        default_type \"text/plain\";"
       , "        alias " <> tc_letsencryptWwwDir tcfg <> "/.well-known/acme-challenge;"

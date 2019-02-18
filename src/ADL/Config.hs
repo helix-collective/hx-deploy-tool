@@ -85,26 +85,26 @@ instance AdlValue DeployMode where
 
 data EndPoint = EndPoint
     { ep_label :: ADL.Types.EndPointLabel
-    , ep_serverName :: T.Text
+    , ep_serverNames :: [T.Text]
     , ep_etype :: EndPointType
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkEndPoint :: ADL.Types.EndPointLabel -> T.Text -> EndPointType -> EndPoint
-mkEndPoint label serverName etype = EndPoint label serverName etype
+mkEndPoint :: ADL.Types.EndPointLabel -> [T.Text] -> EndPointType -> EndPoint
+mkEndPoint label serverNames etype = EndPoint label serverNames etype
 
 instance AdlValue EndPoint where
     atype _ = "config.EndPoint"
     
     jsonGen = genObject
         [ genField "label" ep_label
-        , genField "serverName" ep_serverName
+        , genField "serverNames" ep_serverNames
         , genField "etype" ep_etype
         ]
     
     jsonParser = EndPoint
         <$> parseField "label"
-        <*> parseField "serverName"
+        <*> parseField "serverNames"
         <*> parseField "etype"
 
 data EndPointType
