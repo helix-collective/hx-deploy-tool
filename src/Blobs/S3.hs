@@ -8,11 +8,12 @@ module Blobs.S3(
   mkAwsEnv
   ) where
 
+import qualified Data.ByteString as BS
 import qualified Data.Text as T
 import qualified Network.AWS.S3 as S3
 import qualified Data.Conduit.List as CL
 
-import Data.Conduit((.|), ($$), ($$+-))
+import Data.Conduit((.|), ($$+-), ConduitT, sealConduitT, runConduit)
 import Data.Conduit.Binary(sinkFile)
 import Data.Monoid
 import Data.Maybe(catMaybes)
@@ -64,7 +65,10 @@ downloadFileFrom env bucketName  objectKey toFilePath retryAfter = do
   handling _ServiceError onServiceError $ do
     runResourceT . runAWST env $ do
       resp <- send (S3.getObject bucketName objectKey)
-      liftResourceT (_streamBody (view S3.gorsBody resp) $$+- sinkFile toFilePath)
+      let src = _streamBody (view S3.gorsBody resp) :: ConduitT () BS.ByteString (ResourceT IO) ()
+          sink = sinkFile toFilePath :: ConduitT BS.ByteString o0 (ResourceT IO) ()
+          stream = (sealConduitT src) $$+- sink
+      liftResourceT stream
   where
    onServiceError :: ServiceError -> IO ()
    onServiceError se =
@@ -78,7 +82,7 @@ listFiles :: Env -> S3.BucketName -> S3.ObjectKey -> IO [T.Text]
 listFiles env bucketName (S3.ObjectKey prefix) = do
     let listObjectReq = set S3.loPrefix (Just prefix) (S3.listObjects bucketName)
     runResourceT . runAWST env $ do
-      objects <- paginate listObjectReq $$ CL.foldMap (view S3.lorsContents)
+      objects <- runConduit (paginate listObjectReq .| CL.foldMap (view S3.lorsContents))
       let sortedObjects = reverse (sortOn (view S3.oLastModified) objects)
       return (catMaybes (map (\o -> view S3.oKey o ^? S3.keyName '/') sortedObjects))
 

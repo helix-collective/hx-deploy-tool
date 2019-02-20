@@ -81,7 +81,7 @@ unpackRelease modifyContextFn release toDir = do
       bs_fetchToFile bs release releaseFilePath
 
       -- expand the zip file
-      withArchive (toFilePath releaseFilePath) (unpackInto (toDirPath toDir))
+      withArchive releaseFilePath (unpackInto toDir)
 
       -- load the release metadata
       rcfg <- adlFromJsonFile' (toDir </> "release.json")

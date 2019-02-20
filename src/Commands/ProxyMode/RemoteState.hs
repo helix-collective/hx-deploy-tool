@@ -21,7 +21,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.AWS
 import Control.Monad.Trans.Resource
 import Control.Lens
-import Data.Conduit((.|), ($$), ($$+-), (=$), ResumableSource)
+import Data.Conduit((.|), ($$+-), (=$), sealConduitT, runConduit)
 import Data.Traversable(for)
 import Data.Maybe(catMaybes)
 import Data.Monoid
@@ -61,7 +61,7 @@ getSlaves remoteStateS3 = do
       let (bucketName,S3.ObjectKey bucketPath) = S3.splitPath (remoteStateS3 <> "/slaves")
           listObjectReq = set S3.loPrefix (Just bucketPath) (S3.listObjects bucketName)
       objects <- runResourceT . runAWST env $ do
-        paginate listObjectReq $$ CL.foldMap (view S3.lorsContents)
+        runConduit (paginate listObjectReq .| CL.foldMap (view S3.lorsContents))
       let keys = catMaybes [view S3.oKey obj ^? S3._ObjectKey | obj <- objects]
       let labels = catMaybes (map parseSlaveLabel keys)
       return labels
@@ -93,7 +93,7 @@ stateFromS3 env s3Path = do
     handling _ServiceError onServiceError $ do
       runResourceT . runAWST env $ do
         resp <- send (S3.getObject bucketName objectKey)
-        lbs <- fmap LBS.fromChunks $ liftResourceT (_streamBody (view S3.gorsBody resp) $$+- CL.consume)
+        lbs <- fmap LBS.fromChunks $ liftResourceT (sealConduitT (_streamBody (view S3.gorsBody resp)) $$+- CL.consume)
         case adlFromByteString lbs of
           (ParseFailure e ctx)
             -> error (T.unpack ("Failed to parse state adl at " <> s3Path <> ": " <> e <> " at " <> textFromParseContext ctx))

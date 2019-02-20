@@ -1,5 +1,5 @@
 flags: {}
-resolver: lts-10.10
+resolver: lts-11.22
 packages:
 - '.'
 - location:
@@ -11,7 +11,8 @@ packages:
   - haskell/compiler-lib
   - haskell/compiler
   extra-dep: true
-extra-deps: []
+extra-deps:
+  - amazonka-secretsmanager-1.6.0
 extra-package-dbs: []
 nix:
    packages: [zlib, bzip2]
