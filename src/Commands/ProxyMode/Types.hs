@@ -3,7 +3,7 @@ module Commands.ProxyMode.Types where
 import qualified ADL.Core.StringMap as SM
 import qualified Data.Text as T
 
-import ADL.Config(EndPoint(..), ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..))
+import ADL.Config(EndPoint(..), ToolConfig(..), DeployMode(..), ProxyModeConfig(..))
 import ADL.State(State(..), Deploy(..))
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
 

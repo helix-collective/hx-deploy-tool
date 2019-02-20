@@ -12,7 +12,12 @@ packages:
   - haskell/compiler
   extra-dep: true
 extra-deps:
-  - amazonka-secretsmanager-1.6.0
+  - amazonka-1.6.1
+  - amazonka-core-1.6.1
+  - amazonka-ecr-1.6.1
+  - amazonka-route53-1.6.1
+  - amazonka-s3-1.6.1
+  - amazonka-secretsmanager-1.6.1
 extra-package-dbs: []
 nix:
    packages: [zlib, bzip2]

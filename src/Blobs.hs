@@ -27,11 +27,6 @@ releaseBlobStore = do
   tcfg <- getToolConfig
   createBlobStore (tc_releases tcfg)
 
-deployContextBlobStore :: IOR BlobStore
-deployContextBlobStore = do
-  tcfg <- getToolConfig
-  createBlobStore (tc_deployContext tcfg)
-
 createBlobStore :: BlobStoreConfig -> IOR BlobStore
 createBlobStore (BlobStoreConfig_s3 s3Path) = awsBlobStore s3Path
 createBlobStore (BlobStoreConfig_localdir dirpath)  = localBlobStore (T.unpack dirpath)

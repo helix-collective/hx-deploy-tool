@@ -13,11 +13,16 @@ import qualified Data.Text.IO as T
 import qualified Log as L
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
+import qualified Blobs.S3 as S3
+import qualified Blobs.Secrets as Secrets
 
-import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..))
+import qualified Control.Monad.Trans.AWS as AWS
+
+import ADL.Config(ToolConfig(..), DeployMode(..), DeployContext(..), DeployContextSource(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile')
-import Blobs(releaseBlobStore, deployContextBlobStore, BlobStore(..), BlobName)
+import Blobs(releaseBlobStore, BlobStore(..), BlobName)
+import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Codec.Archive.Zip(withArchive, unpackInto)
 import Control.Concurrent(threadDelay)
 import Control.Monad(when)
@@ -34,35 +39,66 @@ import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExis
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Posix.Files(createSymbolicLink, removeLink)
 import System.IO(stdout, withFile, hIsEOF, IOMode(..))
+import System.Directory(listDirectory, doesFileExist, copyFile)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
+
+deployContextCacheFilePath :: ToolConfig -> DeployContext -> FilePath
+deployContextCacheFilePath tcfg dc = T.unpack (tc_contextCache tcfg) </> T.unpack (dc_name dc) <> ".json"
 
 --- Download the infrastructure context files from the blobstore
 fetchDeployContext :: Maybe Int -> IOR ()
 fetchDeployContext retryAfter = do
   scopeInfo "Fetching deploy context from store" $ do
-    bs <- deployContextBlobStore
     tcfg <- getToolConfig
+    awsEnvFn <- S3.mkAwsEnvFn
     do
-      let cacheDir = T.unpack (tc_contextCache tcfg)
-      liftIO $ createDirectoryIfMissing True cacheDir
-      for_ (tc_deployContextFiles tcfg) $ \cf -> do
-        let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
+      liftIO $ createDirectoryIfMissing True (T.unpack (tc_contextCache tcfg))
+      for_ (tc_deployContexts tcfg) $ \dc -> do
+        let cacheFilePath = deployContextCacheFilePath tcfg dc
         case retryAfter of
           Nothing -> return ()
-          Just delay -> await bs (dcf_sourceName cf) delay
-        info ("Downloading " <> dcf_sourceName cf <> " from " <> bs_label bs <> " to " <> T.pack cacheFilePath)
-        liftIO $ bs_fetchToFile bs (dcf_sourceName cf) cacheFilePath
+          Just delay -> await awsEnvFn (dc_source dc) delay
+
+        info ("Downloading " <> T.pack cacheFilePath <> " from " <> dcLabel (dc_source dc))
+        dcFetchToFile awsEnvFn (dc_source dc) cacheFilePath
  where
-   await:: BlobStore -> BlobName -> Int -> IOR ()
-   await bs name delaySecs = do
-     exists <- liftIO $ bs_exists bs name
+   await :: IOR AWS.Env -> DeployContextSource -> Int -> IOR ()
+   await awsEnvFn dc delaySecs = do
+     exists <- dcExists awsEnvFn dc
      case exists of
        True -> return ()
        False -> do
-         info ("Waiting for "<> name <> " in " <> bs_label bs)
+         info ("Waiting for "<> dcLabel dc)
          liftIO $ threadDelay (1000000 * delaySecs)
-         await bs name delaySecs
+         await awsEnvFn dc delaySecs
+
+   dcLabel :: DeployContextSource -> T.Text
+   dcLabel (Dcs_file file) = file
+   dcLabel (Dcs_s3 s3Path) = s3Path
+   dcLabel (Dcs_awsSecretArn arn) = "AWS secret " <> arn
+
+   dcExists :: IOR AWS.Env -> DeployContextSource -> IOR Bool
+   dcExists _ (Dcs_file file) = do
+     liftIO $ doesFileExist (T.unpack file)
+   dcExists awsEnvFn (Dcs_s3 s3Path) = do
+     env <- awsEnvFn
+     let (bucket,key)  = S3.splitPath s3Path
+     liftIO $ S3.fileExists env bucket key
+   dcExists awsEnvFn (Dcs_awsSecretArn arn) = do
+     env <- awsEnvFn
+     liftIO $ Secrets.secretExists env arn
+
+   dcFetchToFile :: IOR AWS.Env -> DeployContextSource -> FilePath -> IOR ()
+   dcFetchToFile _ (Dcs_file fromFile) toFile = do
+     liftIO $ copyFile (T.unpack fromFile) toFile
+   dcFetchToFile awsEnvFn (Dcs_s3 s3Path) toFile =  do
+     env <- awsEnvFn
+     let (bucket,key)  = S3.splitPath s3Path
+     liftIO $ S3.downloadFileFrom env bucket key toFile Nothing
+   dcFetchToFile awsEnvFn (Dcs_awsSecretArn arn) toFile = do
+     env <- awsEnvFn
+     liftIO $ Secrets.downloadSecretFrom env arn toFile
 
 -- unpack a release into the specified directory, and expand any templates
 --
@@ -104,8 +140,8 @@ checkReleaseExists release = do
 loadMergedContext :: ToolConfig -> IO JS.Value
 loadMergedContext tcfg = do
   let cacheDir = T.unpack (tc_contextCache tcfg)
-  values <- for (tc_deployContextFiles tcfg) $ \cf -> do
-    let cacheFilePath = cacheDir </> T.unpack (dcf_name cf)
+  values <- for (tc_deployContexts tcfg) $ \dc -> do
+    let cacheFilePath = deployContextCacheFilePath tcfg dc
     lbs <- LBS.readFile cacheFilePath
     case JS.eitherDecode' lbs of
      (Left e) -> error ("Unable to parse json from " <> cacheFilePath)

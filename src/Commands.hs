@@ -17,7 +17,7 @@ import qualified Text.Mustache.Types as TM
 import qualified Commands.ProxyMode as P
 import qualified Blobs.S3 as S3
 
-import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..))
+import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile')
 import Blobs(releaseBlobStore, BlobStore(..))

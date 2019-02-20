@@ -2,7 +2,8 @@ module config
 {
 import adlc.config.haskell.HaskellFieldPrefix;
 
-annotation DeployContextFile HaskellFieldPrefix "dcf_";
+annotation DeployContext HaskellFieldPrefix "dc_";
+annotation DeployContextSource HaskellFieldPrefix "dcs_";
 annotation EndPoint HaskellFieldPrefix "ep_";
 annotation EndPointType HaskellFieldPrefix "ep_";
 annotation ToolConfig HaskellFieldPrefix "tc_";

@@ -23,10 +23,7 @@ struct ToolConfig {
     /// The storage location for release zip files
     BlobStoreConfig releases;
 
-    /// The storage location for deployment context files
-    BlobStoreConfig deployContext;
-
-    Vector<DeployContextFile> deployContextFiles;
+    Vector<DeployContext> deployContexts;
     DeployMode deployMode = "select";
 };
 
@@ -86,10 +83,22 @@ struct SslCertPaths {
   FilePath sslCertificateKey;
 };
 
-struct DeployContextFile
+struct DeployContext
 {
-    FilePath name;
-    String sourceName;
+    String name;
+    DeployContextSource source;
+};
+
+union DeployContextSource
+{
+    // Context from a local file
+    FilePath file;
+
+    /// Context from an S3 object
+    S3Path s3;
+
+    /// Context from AWS secrets manager secret
+    String awsSecretArn;
 };
 
 union Verbosity

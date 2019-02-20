@@ -25,7 +25,7 @@ import qualified Network.AWS.EC2.Metadata as EC2M
 import ADL.Config(EndPoint(..), EndPointType(..))
 import ADL.Core(adlFromJsonFile', adlToJsonFile)
 import ADL.Release(ReleaseConfig(..))
-import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..), MachineLabel(..))
+import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), MachineLabel(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Util(unpackRelease,fetchDeployContext, checkReleaseExists)

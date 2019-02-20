@@ -5,7 +5,8 @@ module Blobs.S3(
   downloadFileFrom,
   listFiles,
   extendObjectKey,
-  mkAwsEnv
+  mkAwsEnv,
+  mkAwsEnvFn
   ) where
 
 import qualified Data.ByteString as BS
@@ -20,6 +21,7 @@ import Data.Maybe(catMaybes)
 import Data.List(sortOn)
 import Data.Traversable(for)
 import Control.Concurrent(threadDelay)
+import Control.Concurrent.MVar
 import Control.Exception.Lens
 import Control.Lens
 import Control.Monad.Trans.AWS
@@ -40,6 +42,22 @@ mkAwsEnv = do
   liftIO $ do
     env0 <- newEnv Discover
     return (env0 & envLogger .~ (L.awsLogger logger))
+
+type AwsEnvFn = IOR Env
+
+-- Create an AWS environment when required, and reuse it subsequently.
+mkAwsEnvFn :: IOR AwsEnvFn
+mkAwsEnvFn = do
+  mv <- liftIO $ newEmptyMVar
+  return $ do
+    menv <- liftIO $ tryReadMVar mv
+    case menv of
+      (Just awsEnv) -> return awsEnv
+      Nothing -> do
+        awsEnv <- mkAwsEnv
+        liftIO $ putMVar mv awsEnv
+        return awsEnv
+
 
 splitPath :: T.Text -> (S3.BucketName,S3.ObjectKey)
 splitPath s3Path = case T.stripPrefix "s3://" s3Path of

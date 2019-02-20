@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     BlobStoreConfig(..),
-    DeployContextFile(..),
+    DeployContext(..),
+    DeployContextSource(..),
     DeployMode(..),
     EndPoint(..),
     EndPointType(..),
@@ -44,26 +45,47 @@ instance AdlValue BlobStoreConfig where
         <|> parseUnionValue "localdir" BlobStoreConfig_localdir
         <|> parseFail "expected a BlobStoreConfig"
 
-data DeployContextFile = DeployContextFile
-    { dcf_name :: ADL.Types.FilePath
-    , dcf_sourceName :: T.Text
+data DeployContext = DeployContext
+    { dc_name :: T.Text
+    , dc_source :: DeployContextSource
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkDeployContextFile :: ADL.Types.FilePath -> T.Text -> DeployContextFile
-mkDeployContextFile name sourceName = DeployContextFile name sourceName
+mkDeployContext :: T.Text -> DeployContextSource -> DeployContext
+mkDeployContext name source = DeployContext name source
 
-instance AdlValue DeployContextFile where
-    atype _ = "config.DeployContextFile"
+instance AdlValue DeployContext where
+    atype _ = "config.DeployContext"
     
     jsonGen = genObject
-        [ genField "name" dcf_name
-        , genField "sourceName" dcf_sourceName
+        [ genField "name" dc_name
+        , genField "source" dc_source
         ]
     
-    jsonParser = DeployContextFile
+    jsonParser = DeployContext
         <$> parseField "name"
-        <*> parseField "sourceName"
+        <*> parseField "source"
+
+data DeployContextSource
+    = Dcs_file ADL.Types.FilePath
+    | Dcs_s3 ADL.Types.S3Path
+    | Dcs_awsSecretArn T.Text
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue DeployContextSource where
+    atype _ = "config.DeployContextSource"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        Dcs_file v -> genUnionValue "file" v
+        Dcs_s3 v -> genUnionValue "s3" v
+        Dcs_awsSecretArn v -> genUnionValue "awsSecretArn" v
+        )
+    
+    jsonParser
+        =   parseUnionValue "file" Dcs_file
+        <|> parseUnionValue "s3" Dcs_s3
+        <|> parseUnionValue "awsSecretArn" Dcs_awsSecretArn
+        <|> parseFail "expected a DeployContextSource"
 
 data DeployMode
     = DeployMode_select
@@ -251,14 +273,13 @@ data ToolConfig = ToolConfig
     , tc_autoCertName :: T.Text
     , tc_autoCertContactEmail :: T.Text
     , tc_releases :: BlobStoreConfig
-    , tc_deployContext :: BlobStoreConfig
-    , tc_deployContextFiles :: [DeployContextFile]
+    , tc_deployContexts :: [DeployContext]
     , tc_deployMode :: DeployMode
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkToolConfig :: BlobStoreConfig -> BlobStoreConfig -> [DeployContextFile] -> ToolConfig
-mkToolConfig releases deployContext deployContextFiles = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContext deployContextFiles DeployMode_select
+mkToolConfig :: BlobStoreConfig -> [DeployContext] -> ToolConfig
+mkToolConfig releases deployContexts = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContexts DeployMode_select
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -272,8 +293,7 @@ instance AdlValue ToolConfig where
         , genField "autoCertName" tc_autoCertName
         , genField "autoCertContactEmail" tc_autoCertContactEmail
         , genField "releases" tc_releases
-        , genField "deployContext" tc_deployContext
-        , genField "deployContextFiles" tc_deployContextFiles
+        , genField "deployContexts" tc_deployContexts
         , genField "deployMode" tc_deployMode
         ]
     
@@ -286,8 +306,7 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "autoCertName" "hxdeploytoolcert"
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
-        <*> parseField "deployContext"
-        <*> parseField "deployContextFiles"
+        <*> parseField "deployContexts"
         <*> parseFieldDef "deployMode" DeployMode_select
 
 data Verbosity

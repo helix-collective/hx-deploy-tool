@@ -16,7 +16,7 @@ import qualified Data.Set as S
 import ADL.Config(EndPoint(..), EndPointType(..))
 import ADL.Core(adlFromJsonFile', adlToJsonFile)
 import ADL.Release(ReleaseConfig(..))
-import ADL.Config(ToolConfig(..), DeployContextFile(..), DeployMode(..), ProxyModeConfig(..), SslCertMode(..),  SslCertPaths(..))
+import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), SslCertMode(..),  SslCertPaths(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Commands.ProxyMode.Types

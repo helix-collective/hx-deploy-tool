@@ -28,6 +28,7 @@ executable hx-deploy-tool
                      , ADL.Types
                      , Blobs
                      , Blobs.S3
+                     , Blobs.Secrets
                      , Commands
                      , Commands.LetsEncrypt
                      , Commands.ProxyMode
@@ -47,6 +48,7 @@ executable hx-deploy-tool
                      , amazonka-ecr >= 1.4 && < 1.7
                      , amazonka-route53 >= 1.4.5 && < 1.7
                      , amazonka-s3 >= 1.4 && < 1.7
+                     , amazonka-secretsmanager >= 1.4 && < 1.7
                      , base64-bytestring >= 1.0 && < 1.1
                      , binary >= 0.8.5.1 && < 0.9
                      , bytestring >= 0.10 && < 0.11
