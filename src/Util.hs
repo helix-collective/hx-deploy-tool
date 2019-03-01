@@ -100,6 +100,16 @@ fetchDeployContext retryAfter = do
      env <- awsEnvFn
      liftIO $ Secrets.downloadSecretFrom env arn toFile
 
+injectContext :: (JS.Value -> JS.Value) -> FilePath -> FilePath -> IOR()
+injectContext modifyContextFn templatePath destPath = do
+  tcfg <- getToolConfig
+  liftIO $ do
+    -- load and merge the infrastructure context
+    ctx <- fmap modifyContextFn (loadMergedContext tcfg)
+
+    -- interpolate the context into each templated file
+    expandTemplateFileToDest ctx templatePath destPath
+
 -- unpack a release into the specified directory, and expand any templates
 --
 -- `modifyContextFn` can be used to modify the context before it is used to
@@ -148,15 +158,19 @@ loadMergedContext tcfg = do
      (Right jv) -> return (takeBaseName cacheFilePath, jv)
   return (JS.Object (HM.fromList [(T.pack file,jv) | (file,jv) <- values]))
 
-expandTemplateFile :: JS.Value -> FilePath -> IO ()
-expandTemplateFile ctx templatePath = do
+expandTemplateFileToDest :: JS.Value -> FilePath -> FilePath -> IO ()
+expandTemplateFileToDest ctx templatePath destPath = do
   etemplate <- TM.automaticCompile [takeDirectory templatePath] templatePath
   case etemplate of
    Left err -> error (show err)
    Right template -> do
      let text = TM.substitute template ctx
-         outfile = dropExtension templatePath
+         outfile = destPath
      T.writeFile outfile text
+
+expandTemplateFile :: JS.Value -> FilePath -> IO ()
+expandTemplateFile ctx templatePath = do
+  expandTemplateFileToDest ctx templatePath (dropExtension templatePath)
 
 toDirPath :: FilePath -> Path Abs Dir
 toDirPath path = case parseAbsDir path of

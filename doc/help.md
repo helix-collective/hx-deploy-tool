@@ -88,6 +88,10 @@ Shows the release archives available in S3, most recent first.
 ## hx-deploy-tool unpack <release> <todir>
 Unpack and configure the specified release into the given directory.
 
+## hx-deploy-tool expand-template <templatePath> <destPath>
+Injects the deploy context specified in `deployContextFiles` into a template
+found at `templatePath` and saves the resulting file to `destPath`
+
 ## hx-deploy-tool aws-docker-login-cmd
 Assuming this is run on a AWS EC2 instance, this subcommand runs
 the appropriate docker login command using the instance profile
