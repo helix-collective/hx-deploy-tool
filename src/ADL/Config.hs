@@ -6,6 +6,7 @@ module ADL.Config(
     DeployMode(..),
     EndPoint(..),
     EndPointType(..),
+    HealthCheckConfig(..),
     LetsEncryptConfig(..),
     MachineLabel(..),
     ProxyModeConfig(..),
@@ -147,6 +148,27 @@ instance AdlValue EndPointType where
         <|> parseUnionValue "httpsWithRedirect" Ep_httpsWithRedirect
         <|> parseFail "expected a EndPointType"
 
+data HealthCheckConfig = HealthCheckConfig
+    { hc_incomingPath :: T.Text
+    , hc_outgoingPath :: T.Text
+    }
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+mkHealthCheckConfig :: T.Text -> T.Text -> HealthCheckConfig
+mkHealthCheckConfig incomingPath outgoingPath = HealthCheckConfig incomingPath outgoingPath
+
+instance AdlValue HealthCheckConfig where
+    atype _ = "config.HealthCheckConfig"
+    
+    jsonGen = genObject
+        [ genField "incomingPath" hc_incomingPath
+        , genField "outgoingPath" hc_outgoingPath
+        ]
+    
+    jsonParser = HealthCheckConfig
+        <$> parseField "incomingPath"
+        <*> parseField "outgoingPath"
+
 data LetsEncryptConfig = LetsEncryptConfig
     { lec_certbotPath :: T.Text
     , lec_awsHostedZoneId :: T.Text
@@ -275,11 +297,12 @@ data ToolConfig = ToolConfig
     , tc_releases :: BlobStoreConfig
     , tc_deployContexts :: [DeployContext]
     , tc_deployMode :: DeployMode
+    , tc_healthCheck :: Prelude.Maybe (HealthCheckConfig)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: BlobStoreConfig -> [DeployContext] -> ToolConfig
-mkToolConfig releases deployContexts = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContexts DeployMode_select
+mkToolConfig releases deployContexts = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContexts DeployMode_select (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -295,6 +318,7 @@ instance AdlValue ToolConfig where
         , genField "releases" tc_releases
         , genField "deployContexts" tc_deployContexts
         , genField "deployMode" tc_deployMode
+        , genField "healthCheck" tc_healthCheck
         ]
     
     jsonParser = ToolConfig
@@ -308,6 +332,7 @@ instance AdlValue ToolConfig where
         <*> parseField "releases"
         <*> parseField "deployContexts"
         <*> parseFieldDef "deployMode" DeployMode_select
+        <*> parseFieldDef "healthCheck" (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 data Verbosity
     = Verbosity_quiet

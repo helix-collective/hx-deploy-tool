@@ -25,6 +25,12 @@ struct ToolConfig {
 
     Vector<DeployContext> deployContexts;
     DeployMode deployMode = "select";
+
+    // Support for AWS health checks in proxy mode
+    Nullable<HealthCheckConfig> healthCheck = {
+       "incomingPath" : "/health-check",
+       "outgoingPath" : "/"
+    };
 };
 
 union DeployMode {
@@ -50,6 +56,16 @@ struct ProxyModeConfig {
 
     /// How we generate identifiers for slave machines
     MachineLabel slaveLabel = "ec2InstanceId";
+};
+
+struct HealthCheckConfig {
+    // The path upon which we expect the AWS Target Group to request
+    /// a health check;
+    String incomingPath;
+
+    /// The path to which will will proxy the above on the first
+    /// configured endpoint
+    String outgoingPath;
 };
 
 union MachineLabel {

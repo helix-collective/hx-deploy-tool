@@ -1,5 +1,5 @@
 name:                hx-deploy-tool
-version:             0.9
+version:             0.99999
 synopsis:            Tool to facilitate unpacking and configuring helix software releases
 -- description:
 homepage:

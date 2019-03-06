@@ -16,7 +16,7 @@ import qualified Data.Set as S
 import ADL.Config(EndPoint(..), EndPointType(..))
 import ADL.Core(adlFromJsonFile', adlToJsonFile)
 import ADL.Release(ReleaseConfig(..))
-import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), SslCertMode(..),  SslCertPaths(..))
+import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), SslCertMode(..),  SslCertPaths(..), HealthCheckConfig(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Commands.ProxyMode.Types
@@ -252,15 +252,8 @@ writeNginxConfig tcfg path eps = T.writeFile path (T.intercalate "\n" lines)
       , ""
       , "  charset utf-8;"
       , ""
-      , "  # Run a default server just to keep ALB health checks happy"
-      , "  server {"
-      , "    listen 80 default_server;"
-      , "    location /health-check {"
-      , "       return 200;"
-      , "    }"
-      , "  }"
-      , ""
       ] <>
+      healthCheckBlock (tc_healthCheck tcfg) eps <>
       concat (map serverBlock eps) <>
       [ "}"
       ]
@@ -268,12 +261,27 @@ writeNginxConfig tcfg path eps = T.writeFile path (T.intercalate "\n" lines)
     -- The default of 64 or 32 is doesn't seem to be enought to handle long host names
     serverNamesHashBucketSize = "128"
 
+    healthCheckBlock (Just hc) ((_,Just d):_) =
+      [ "  # Redirect health checks to the first configured endpoint"
+      , "  server {"
+      , "    listen 80 default_server;"
+      , "    location " <> hc_incomingPath hc <> " {"
+      , "      proxy_set_header Host $host;"
+      , "      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
+      , "      proxy_pass http://localhost:" <> showText (d_port d) <> hc_outgoingPath hc <> ";"
+      , "    }"
+      , "  }"
+      , ""
+      ]
+    healthCheckBlock _ _ = []
+
     serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},Just d) =
       [ "  server {"
       , "    listen 80;"
       , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
       , "    location / {"
       , "      proxy_set_header Host $host;"
+      , "      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
       , "      proxy_pass http://localhost:" <> showText (d_port d) <> "/;"
       , "    }"
       , "  }"
@@ -304,6 +312,7 @@ writeNginxConfig tcfg path eps = T.writeFile path (T.intercalate "\n" lines)
       , "    ssl_certificate_key " <> sslCertKeyPath certMode <> ";"
       , "    location / {"
       , "      proxy_set_header Host $host;"
+      , "      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
       , "      proxy_pass http://localhost:" <> showText (d_port d) <> "/;"
       , "    }"
       , "  }"
