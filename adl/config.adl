@@ -27,10 +27,10 @@ struct ToolConfig {
     DeployMode deployMode = "select";
 
     // Support for AWS health checks in proxy mode
-    Nullable<HealthCheckConfig> healthCheck = {
+    Maybe<HealthCheckConfig> healthCheck = { "just": {
        "incomingPath" : "/health-check",
        "outgoingPath" : "/"
-    };
+    }};
 };
 
 union DeployMode {

@@ -297,7 +297,7 @@ data ToolConfig = ToolConfig
     , tc_releases :: BlobStoreConfig
     , tc_deployContexts :: [DeployContext]
     , tc_deployMode :: DeployMode
-    , tc_healthCheck :: Prelude.Maybe (HealthCheckConfig)
+    , tc_healthCheck :: (ADL.Sys.Types.Maybe HealthCheckConfig)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
