@@ -1,36 +1,44 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 module Commands.ProxyMode.LocalState(
   localState,
   restartLocalProxy,
-  generateLocalSslCertificate
+  generateLocalSslCertificate,
+  nginxConfTemplate
 ) where
 
 import qualified ADL.Core.StringMap as SM
+import qualified ADL.Core.Nullable as NL
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map as M
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Data.Text.Encoding as T
 import qualified Data.Set as S
+import qualified Text.Mustache as TM
+import qualified Text.Mustache.Types as TM
 
 import ADL.Config(EndPoint(..), EndPointType(..))
-import ADL.Core(adlFromJsonFile', adlToJsonFile)
+import ADL.Core(adlFromJsonFile', adlToJsonFile, adlToJson)
 import ADL.Release(ReleaseConfig(..))
 import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), SslCertMode(..),  SslCertPaths(..), HealthCheckConfig(..))
+import ADL.Nginx(NginxConfContext(..), NginxHealthCheck(..), NginxEndPoint(..), NginxHttpEndPoint(..), NginxHttpsEndPoint(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Commands.ProxyMode.Types
-import Util(unpackRelease,fetchDeployContext)
+import Util(unpackRelease,fetchDeployContext,removeNullKeys)
 import Control.Monad(when)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
+import Data.FileEmbed(embedFile)
 import Data.List(find)
 import Data.Maybe(catMaybes)
 import Data.Foldable(for_)
 import Data.Monoid
 import Data.Word
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory, removeDirectoryRecursive)
-import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
+import System.FilePath(takeBaseName, takeDirectory, dropExtension, replaceExtension, (</>))
 import System.Process(callCommand)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 
@@ -118,11 +126,12 @@ executeAction (DestroyDeploy d) = do
 executeAction (SetEndPoints liveEndPoints) = do
   scopeInfo "execute SetEndPoints" $ do
     tcfg <- getToolConfig
-    allEndPoints <- fmap pm_endPoints getProxyModeConfig
+    pm <- getProxyModeConfig
+    let allEndPoints = pm_endPoints pm
     proxyDir <- getProxyDir
     scopeInfo "writing proxy config files" $ liftIO $ do
       writeProxyDockerCompose tcfg (proxyDir </> "docker-compose.yml")
-      writeNginxConfig tcfg (proxyDir </> "nginx.conf") (maybeEndpoints allEndPoints liveEndPoints)
+      writeNginxConfig tcfg pm (proxyDir </> "nginx.conf") (maybeEndpoints allEndPoints liveEndPoints)
     callCommandInDir proxyDir "docker-compose up -d"
     callCommandInDir proxyDir "docker kill --signal=SIGHUP frontendproxy"
     where
@@ -219,117 +228,47 @@ writeProxyDockerCompose tcfg path = T.writeFile path (T.intercalate "\n" lines)
     ledir = tc_letsencryptPrefixDir tcfg
     lewwwdir = tc_letsencryptWwwDir tcfg
 
-writeNginxConfig :: ToolConfig -> FilePath -> [(EndPoint,Maybe Deploy)] -> IO ()
-writeNginxConfig tcfg path eps = T.writeFile path (T.intercalate "\n" lines)
+writeNginxConfig :: ToolConfig -> ProxyModeConfig -> FilePath -> [(EndPoint,Maybe Deploy)] -> IO ()
+writeNginxConfig tcfg pm path eps = do
+  etemplate <- case pm_nginxConfTemplatePath pm of
+    Nothing -> do
+      return (TM.compileTemplate "nginx.conf.tpl" nginxConfTemplate)
+    (Just templatePath0) -> do
+      let templatePath = T.unpack templatePath0
+      TM.automaticCompile [takeDirectory templatePath] templatePath
+
+  case etemplate of
+   Left err -> error (show err)
+   Right template -> do
+     let json = removeNullKeys (adlToJson context)
+         text = TM.substitute template json
+     LBS.writeFile (replaceExtension path ".ctx.json") (JS.encode json)
+     T.writeFile path text
   where
-    lines =
-      [ "user  nginx;"
-      , "worker_processes  1;"
-      , ""
-      , "error_log  /dev/stderr;"
-      , "pid        /var/run/nginx.pid;"
-      , ""
-      , "events {"
-      , "worker_connections  1024;"
-      , "}"
-      , ""
-      , "http {"
-      , "  include       /etc/nginx/mime.types;"
-      , "  default_type  application/octet-stream;"
-      , ""
-      , "  access_log  /dev/stdout;"
-      , "  error_log   /dev/stderr;"
-      , ""
-      , "  sendfile        on;"
-      , "  server_names_hash_bucket_size " <> serverNamesHashBucketSize <> ";"
-      , ""
-      , "  keepalive_timeout  65;"
-      , "  client_max_body_size 0;"
-      , ""
-      , "  proxy_buffering on;"
-      , "  proxy_temp_path proxy_temp 1 2;"
-      , "  proxy_http_version 1.1;"
-      , ""
-      , "  charset utf-8;"
-      , ""
-      ] <>
-      healthCheckBlock (tc_healthCheck tcfg) eps <>
-      concat (map serverBlock eps) <>
-      [ "}"
-      ]
-
-    -- The default of 64 or 32 is doesn't seem to be enought to handle long host names
-    serverNamesHashBucketSize = "128"
-
-    healthCheckBlock (Just hc) ((_,Just d):_) =
-      [ "  # Redirect health checks to the first configured endpoint"
-      , "  server {"
-      , "    listen 80 default_server;"
-      , "    location " <> hc_incomingPath hc <> " {"
-      , "      proxy_set_header Host $host;"
-      , "      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
-      , "      proxy_pass http://localhost:" <> showText (d_port d) <> hc_outgoingPath hc <> ";"
-      , "    }"
-      , "  }"
-      , ""
-      ]
-    healthCheckBlock _ _ = []
-
-    serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},Just d) =
-      [ "  server {"
-      , "    listen 80;"
-      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
-      , "    location / {"
-      , "      proxy_set_header Host $host;"
-      , "      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
-      , "      proxy_pass http://localhost:" <> showText (d_port d) <> "/;"
-      , "    }"
-      , "  }"
-      ]
-    serverBlock (ep@EndPoint{ep_etype=Ep_httpOnly},Nothing) =
-      [ "  server {"
-      , "    listen 80;"
-      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
-      , "    return 503;"
-      , "  }"
-      ]
-    serverBlock (ep@EndPoint{ep_etype=Ep_httpsWithRedirect certMode},Just d) =
-      [ "  server {"
-      , "    listen 80;"
-      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
-      , "    location '/.well-known/acme-challenge' {"
-      , "        default_type \"text/plain\";"
-      , "        alias " <> tc_letsencryptWwwDir tcfg <> "/.well-known/acme-challenge;"
-      , "    }"
-      , "    location / {"
-      , "      return 301 https://$server_name$request_uri;"
-      , "    }"
-      , "  }"
-      , "  server {"
-      , "    listen       443 ssl;"
-      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
-      , "    ssl_certificate " <> sslCertPath certMode <> ";"
-      , "    ssl_certificate_key " <> sslCertKeyPath certMode <> ";"
-      , "    location / {"
-      , "      proxy_set_header Host $host;"
-      , "      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
-      , "      proxy_pass http://localhost:" <> showText (d_port d) <> "/;"
-      , "    }"
-      , "  }"
-      ]
-    serverBlock (ep@EndPoint{ep_etype=Ep_httpsWithRedirect certMode},Nothing) =
-      [ "  server {"
-      , "    listen 80;"
-      , "    server_name " <> T.intercalate " " (ep_serverNames ep) <> ";"
-      , "    location '/.well-known/acme-challenge' {"
-      , "        default_type \"text/plain\";"
-      , "        alias " <> tc_letsencryptWwwDir tcfg <> "/.well-known/acme-challenge;"
-      , "    }"
-      , "    location / {"
-      , "      return 503;"
-      , "    }"
-      , "  }"
-      ]
+    -- Build the data context to feed the mustach template
+    context = NginxConfContext
+      { ncc_healthCheck = case (tc_healthCheck tcfg, eps) of
+          (Just hc,(_,Just deploy):_) -> NL.fromValue (NginxHealthCheck
+             { nhc_incomingPath = hc_incomingPath hc
+             , nhc_outgoingPath = hc_outgoingPath hc
+             , nhc_outgoingPort = d_port deploy
+             })
+          _ -> NL.null
+      , ncc_endPoints = fmap contextEndPoint eps
+      }
+    contextEndPoint (ep@EndPoint{ep_etype=Ep_httpOnly},deploy) = Ne_http
+      NginxHttpEndPoint
+      { nhe_serverNames = T.intercalate " " (ep_serverNames ep)
+      , nhe_port = NL.fromMaybe (fmap d_port deploy)
+      }
+    contextEndPoint (ep@EndPoint{ep_etype=Ep_httpsWithRedirect certMode},deploy) = Ne_https
+      NginxHttpsEndPoint
+      { nhse_serverNames = T.intercalate " " (ep_serverNames ep)
+      , nhse_port = NL.fromMaybe (fmap d_port deploy)
+      , nhse_sslCertPath = sslCertPath certMode
+      , nhse_sslCertKeyPath = sslCertKeyPath certMode
+      , nhse_letsencryptWwwDir = tc_letsencryptWwwDir tcfg
+      }
 
     sslCertPath :: SslCertMode -> T.Text
     sslCertPath (Scm_explicit scp) = scp_sslCertificate scp
@@ -367,3 +306,7 @@ callCommandInDir inDir cmd = do
 getReleaseConfig :: FilePath -> IOR ReleaseConfig
 getReleaseConfig deployDir = do
   liftIO $ adlFromJsonFile' (deployDir </> "release.json")
+
+
+nginxConfTemplate :: T.Text
+nginxConfTemplate = T.decodeUtf8 $(embedFile "config/nginx.conf.tpl")

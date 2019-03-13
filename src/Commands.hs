@@ -45,6 +45,7 @@ import System.Process(callCommand)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
 import Util(unpackRelease, fetchDeployContext)
+import Commands.ProxyMode.LocalState(nginxConfTemplate)
 
 -- Make the specified release the live release, replacing any existing release.
 select :: T.Text -> IOR ()
@@ -144,3 +145,8 @@ showLog = do
       when (not eof) $ do
         T.hGetLine h >>= T.putStrLn
         nextLine h
+
+-- dump the default nginx.conf mustache template
+showDefaultNginxConfig :: IO ()
+showDefaultNginxConfig = do
+  T.putStrLn nginxConfTemplate

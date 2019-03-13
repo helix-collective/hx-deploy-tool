@@ -100,3 +100,6 @@ typically run on first boot.
 
 ## hx-deploy-tool show-log
 Show the history of releases deployed via the select command.
+
+## hx-deploy-tool show-default-nginx-config
+Outputs the default template for the nginx config.

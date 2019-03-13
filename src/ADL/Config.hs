@@ -225,11 +225,12 @@ data ProxyModeConfig = ProxyModeConfig
     , pm_remoteStateS3 :: (ADL.Sys.Types.Maybe ADL.Types.S3Path)
     , pm_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
     , pm_slaveLabel :: MachineLabel
+    , pm_nginxConfTemplatePath :: (ADL.Sys.Types.Maybe ADL.Types.FilePath)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkProxyModeConfig :: StringMap (EndPoint) -> ProxyModeConfig
-mkProxyModeConfig endPoints = ProxyModeConfig endPoints Prelude.Nothing ((,) 8000 8100) MachineLabel_ec2InstanceId
+mkProxyModeConfig endPoints = ProxyModeConfig endPoints Prelude.Nothing ((,) 8000 8100) MachineLabel_ec2InstanceId Prelude.Nothing
 
 instance AdlValue ProxyModeConfig where
     atype _ = "config.ProxyModeConfig"
@@ -239,6 +240,7 @@ instance AdlValue ProxyModeConfig where
         , genField "remoteStateS3" pm_remoteStateS3
         , genField "dynamicPortRange" pm_dynamicPortRange
         , genField "slaveLabel" pm_slaveLabel
+        , genField "nginxConfTemplatePath" pm_nginxConfTemplatePath
         ]
     
     jsonParser = ProxyModeConfig
@@ -246,6 +248,7 @@ instance AdlValue ProxyModeConfig where
         <*> parseFieldDef "remoteStateS3" Prelude.Nothing
         <*> parseFieldDef "dynamicPortRange" ((,) 8000 8100)
         <*> parseFieldDef "slaveLabel" MachineLabel_ec2InstanceId
+        <*> parseFieldDef "nginxConfTemplatePath" Prelude.Nothing
 
 data SslCertMode
     = Scm_generated

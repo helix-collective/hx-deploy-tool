@@ -1,0 +1,35 @@
+module nginx
+{
+
+/// The struct available to the nginx config mustache template
+
+struct NginxConfContext {
+   Nullable<NginxHealthCheck> healthCheck;
+   Vector<NginxEndPoint> endPoints;
+};
+
+union NginxEndPoint {
+   NginxHttpEndPoint http;
+   NginxHttpsEndPoint https;
+};
+
+struct NginxHttpEndPoint {
+   String serverNames;
+   Nullable<Word32> port;
+};
+struct NginxHttpsEndPoint {
+   String serverNames;
+   String sslCertPath;
+   String sslCertKeyPath;
+   String letsencryptWwwDir;
+   Nullable<Word32> port;
+};
+
+
+struct NginxHealthCheck {
+   String incomingPath;
+   String outgoingPath;
+   Word32 outgoingPort;
+};
+
+};

@@ -181,3 +181,11 @@ toFilePath :: FilePath -> Path Abs File
 toFilePath path = case parseAbsFile path of
   Just p -> p
   Nothing -> error "Unable to parse directory"
+
+removeNullKeys :: JS.Value -> JS.Value
+removeNullKeys (JS.Object hm) = (JS.Object (fmap removeNullKeys (HM.filter (not . isNull) hm)))
+  where
+    isNull JS.Null = True
+    isNull _ = False
+removeNullKeys (JS.Array a) = (JS.Array (fmap removeNullKeys a))
+removeNullKeys json = json

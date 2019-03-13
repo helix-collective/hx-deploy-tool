@@ -1,0 +1,10 @@
+module nginx
+{
+import adlc.config.haskell.HaskellFieldPrefix;
+
+annotation NginxConfContext HaskellFieldPrefix "ncc_";
+annotation NginxEndPoint HaskellFieldPrefix "ne_";
+annotation NginxHttpEndPoint HaskellFieldPrefix "nhe_";
+annotation NginxHttpsEndPoint HaskellFieldPrefix "nhse_";
+annotation NginxHealthCheck HaskellFieldPrefix "nhc_";
+};

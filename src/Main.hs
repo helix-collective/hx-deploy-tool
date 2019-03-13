@@ -18,6 +18,7 @@ import Control.Monad.Catch(finally,catch)
 import Control.Monad.Reader(runReaderT)
 import Data.Monoid
 import HelpText(helpText)
+import Commands.ProxyMode.LocalState(nginxConfTemplate)
 import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
 import System.FilePath(takeDirectory, (</>))
@@ -34,6 +35,7 @@ main = do
     ["--version"]                               -> putStrLn (showVersion version)
     ["list-releases"]                           -> runWithConfig       (C.listReleases)
     ["show-log"]                                -> runWithConfig       (C.showLog)
+    ["show-default-nginx-config"]               -> C.showDefaultNginxConfig
 
     ["fetch-context"]                           -> runWithConfigAndLog (U.fetchDeployContext Nothing)
     ["fetch-context","--retry"]                 -> runWithConfigAndLog (U.fetchDeployContext (Just 10))
@@ -132,6 +134,7 @@ usageText = "\
   \  hx-deploy-tool unpack <release> <todir>\n\
   \  hx-deploy-tool expand-template <templatePath> <destPath>\n\
   \  hx-deploy-tool show-log\n\
+  \  hx-deploy-tool show-default-nginx-config\n\
   \  hx-deploy-tool aws-docker-login-cmd\n\
   \  hx-deploy-tool --version\n\
   \\n\

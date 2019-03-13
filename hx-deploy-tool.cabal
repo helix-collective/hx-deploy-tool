@@ -13,7 +13,8 @@ build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
 
-data-files:          doc/help.md
+data-files:            doc/help.md
+                     , config/nginx.conf.tpl
 
 executable hx-deploy-tool
   hs-source-dirs:      src
@@ -21,7 +22,9 @@ executable hx-deploy-tool
   other-modules:       ADL.Core
                      , ADL.Core.Value
                      , ADL.Core.StringMap
+                     , ADL.Core.Nullable
                      , ADL.Config
+                     , ADL.Nginx
                      , ADL.Release
                      , ADL.State
                      , ADL.Sys.Types

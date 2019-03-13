@@ -56,6 +56,10 @@ struct ProxyModeConfig {
 
     /// How we generate identifiers for slave machines
     MachineLabel slaveLabel = "ec2InstanceId";
+
+    /// The mustache template to used be for the proxy nginx configuration
+    /// If not provided the builtin template will be used.
+    Maybe<FilePath> nginxConfTemplatePath = "nothing";
 };
 
 struct HealthCheckConfig {
