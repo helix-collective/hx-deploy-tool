@@ -19,8 +19,8 @@ struct NginxHttpEndPoint {
 };
 struct NginxHttpsEndPoint {
    String serverNames;
-   String sslCertPath;
-   String sslCertKeyPath;
+   Nullable<String> sslCertPath;
+   Nullable<String> sslCertKeyPath;
    String letsencryptWwwDir;
    Nullable<Word32> port;
 };

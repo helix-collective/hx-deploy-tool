@@ -103,14 +103,14 @@ instance AdlValue NginxHttpEndPoint where
 
 data NginxHttpsEndPoint = NginxHttpsEndPoint
     { nhse_serverNames :: T.Text
-    , nhse_sslCertPath :: T.Text
-    , nhse_sslCertKeyPath :: T.Text
+    , nhse_sslCertPath :: ADL.Core.Nullable.Nullable (T.Text)
+    , nhse_sslCertKeyPath :: ADL.Core.Nullable.Nullable (T.Text)
     , nhse_letsencryptWwwDir :: T.Text
     , nhse_port :: ADL.Core.Nullable.Nullable (Data.Word.Word32)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkNginxHttpsEndPoint :: T.Text -> T.Text -> T.Text -> T.Text -> ADL.Core.Nullable.Nullable (Data.Word.Word32) -> NginxHttpsEndPoint
+mkNginxHttpsEndPoint :: T.Text -> ADL.Core.Nullable.Nullable (T.Text) -> ADL.Core.Nullable.Nullable (T.Text) -> T.Text -> ADL.Core.Nullable.Nullable (Data.Word.Word32) -> NginxHttpsEndPoint
 mkNginxHttpsEndPoint serverNames sslCertPath sslCertKeyPath letsencryptWwwDir port = NginxHttpsEndPoint serverNames sslCertPath sslCertKeyPath letsencryptWwwDir port
 
 instance AdlValue NginxHttpsEndPoint where

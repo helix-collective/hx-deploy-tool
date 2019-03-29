@@ -77,7 +77,7 @@ http {
     listen       443 ssl;
     server_name {{serverNames}};
     ssl_certificate {{sslCertPath}};
-    ssl_certificate_key {sslCertKeyPath}};
+    ssl_certificate_key {{sslCertKeyPath}};
     location / {
       proxy_set_header Host $host;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -97,13 +97,15 @@ http {
       return 503;
     }
   }
+{{#sslCertPath}}
   server {
     listen 443;
     server_name {{serverNames}};
     ssl_certificate {{sslCertPath}};
-    ssl_certificate_key {sslCertKeyPath}};
+    ssl_certificate_key {{sslCertKeyPath}};
     return 503;
   }
+{{/sslCertPath}}
 {{/port}}
 {{/https}}
 {{/endPoints}}

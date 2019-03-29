@@ -237,6 +237,8 @@ writeNginxConfig tcfg pm path eps = do
       let templatePath = T.unpack templatePath0
       TM.automaticCompile [takeDirectory templatePath] templatePath
 
+  context <- nginxConfigContext tcfg pm eps
+
   case etemplate of
    Left err -> error (show err)
    Right template -> do
@@ -244,39 +246,51 @@ writeNginxConfig tcfg pm path eps = do
          text = TM.substitute template json
      LBS.writeFile (replaceExtension path ".ctx.json") (JS.encode json)
      T.writeFile path text
-  where
-    -- Build the data context to feed the mustach template
-    context = NginxConfContext
-      { ncc_healthCheck = case (tc_healthCheck tcfg, eps) of
-          (Just hc,(_,Just deploy):_) -> NL.fromValue (NginxHealthCheck
-             { nhc_incomingPath = hc_incomingPath hc
-             , nhc_outgoingPath = hc_outgoingPath hc
-             , nhc_outgoingPort = d_port deploy
-             })
-          _ -> NL.null
-      , ncc_endPoints = fmap contextEndPoint eps
-      }
-    contextEndPoint (ep@EndPoint{ep_etype=Ep_httpOnly},deploy) = Ne_http
-      NginxHttpEndPoint
-      { nhe_serverNames = T.intercalate " " (ep_serverNames ep)
-      , nhe_port = NL.fromMaybe (fmap d_port deploy)
-      }
-    contextEndPoint (ep@EndPoint{ep_etype=Ep_httpsWithRedirect certMode},deploy) = Ne_https
-      NginxHttpsEndPoint
-      { nhse_serverNames = T.intercalate " " (ep_serverNames ep)
-      , nhse_port = NL.fromMaybe (fmap d_port deploy)
-      , nhse_sslCertPath = sslCertPath certMode
-      , nhse_sslCertKeyPath = sslCertKeyPath certMode
-      , nhse_letsencryptWwwDir = tc_letsencryptWwwDir tcfg
-      }
 
-    sslCertPath :: SslCertMode -> T.Text
-    sslCertPath (Scm_explicit scp) = scp_sslCertificate scp
-    sslCertPath Scm_generated = tc_letsencryptPrefixDir tcfg <> "/etc/letsencrypt/live/" <> (tc_autoCertName tcfg) <> "/fullchain.pem"
+-- build up the context to be injected into the nginx config template
+nginxConfigContext:: ToolConfig -> ProxyModeConfig -> [(EndPoint,Maybe Deploy)] -> IO NginxConfContext
+nginxConfigContext tcfg pm eps = do
+  -- We only include the ssl paths for the generated certificate in
+  -- the context if the physical paths exist on disk
+  genSslCertPath <- existingFilePath (tc_letsencryptPrefixDir tcfg <> "/etc/letsencrypt/live/" <> (tc_autoCertName tcfg) <> "/fullchain.pem")
+  genSslCertKeyPath <- existingFilePath (tc_letsencryptPrefixDir tcfg <> "/etc/letsencrypt/live/" <> (tc_autoCertName tcfg) <>"/privkey.pem")
+  let context = NginxConfContext
+        { ncc_healthCheck = case (tc_healthCheck tcfg, eps) of
+            (Just hc,(_,Just deploy):_) -> NL.fromValue (NginxHealthCheck
+               { nhc_incomingPath = hc_incomingPath hc
+               , nhc_outgoingPath = hc_outgoingPath hc
+               , nhc_outgoingPort = d_port deploy
+               })
+            _ -> NL.null
+        , ncc_endPoints = fmap contextEndPoint eps
+        }
+      contextEndPoint (ep@EndPoint{ep_etype=Ep_httpOnly},deploy) = Ne_http
+        NginxHttpEndPoint
+        { nhe_serverNames = T.intercalate " " (ep_serverNames ep)
+        , nhe_port = NL.fromMaybe (fmap d_port deploy)
+        }
+      contextEndPoint (ep@EndPoint{ep_etype=Ep_httpsWithRedirect certMode},deploy) = Ne_https
+        NginxHttpsEndPoint
+        { nhse_serverNames = T.intercalate " " (ep_serverNames ep)
+        , nhse_port = NL.fromMaybe (fmap d_port deploy)
+        , nhse_sslCertPath = sslCertPath certMode
+        , nhse_sslCertKeyPath = sslCertKeyPath certMode
+        , nhse_letsencryptWwwDir = tc_letsencryptWwwDir tcfg
+        }
+      sslCertPath :: SslCertMode -> NL.Nullable T.Text
+      sslCertPath (Scm_explicit scp) = NL.fromValue (scp_sslCertificate scp)
+      sslCertPath Scm_generated = genSslCertPath
 
-    sslCertKeyPath :: SslCertMode -> T.Text
-    sslCertKeyPath (Scm_explicit scp) = scp_sslCertificateKey scp
-    sslCertKeyPath Scm_generated = tc_letsencryptPrefixDir tcfg <> "/etc/letsencrypt/live/" <> (tc_autoCertName tcfg) <>"/privkey.pem";
+      sslCertKeyPath :: SslCertMode -> NL.Nullable T.Text
+      sslCertKeyPath (Scm_explicit scp) = NL.fromValue (scp_sslCertificateKey scp)
+      sslCertKeyPath Scm_generated = genSslCertKeyPath
+
+  return context
+
+existingFilePath :: T.Text -> IO (NL.Nullable T.Text)
+existingFilePath path = do
+  exists <- doesFileExist (T.unpack path)
+  return (if exists then (NL.fromValue path) else NL.null)
 
 -- Extend the release template context with port variables,
 -- which include the http port where the deploy will make
