@@ -32,23 +32,23 @@ proxy endpoints.
 # Deployments with a proxy
 The following subcommands are used to manage reverse proxy deployments:
 
-## hx-deploy-tool proxy-status
+## hx-deploy-tool status
 Show the proxy system status: specifically the endpoints and live
 deploys.
 
-## hx-deploy-tool proxy-deploy <release>
+## hx-deploy-tool start <release>
 Create and start a deployment (if it's not already running)
 
-## hx-deploy-tool proxy-undeploy <release>
+## hx-deploy-tool stop <release>
 Stop and remove a deployment
 
-## hx-deploy-tool proxy-connect <endpoint> <release>
+## hx-deploy-tool restart <endpoint> <release>
 Connect an endpoint to a running deployment
 
-## hx-deploy-tool proxy-disconnect <endpoint>
+## hx-deploy-tool disconnect <endpoint>
 Disconnect an endpoint
 
-## hx-deploy-tool proxy-slave-update [--repeat n]
+## hx-deploy-tool slave-update [--repeat n]
 If the tool is configured with proxy remote state, this fetches
 the master state from S3, and updates the local state to match.
 With a repeat argument, the command will repeat every n seconds,

@@ -42,19 +42,19 @@ main = do
     ["unpack", release, toDir]                  -> runWithConfigAndLog (U.unpackRelease id (T.pack release) toDir)
     ["expand-template", templatePath, destPath] -> runWithConfigAndLog (U.injectContext id templatePath destPath)
     ["aws-docker-login-cmd"]                    -> runWithConfigAndLog (C.awsDockerLoginCmd)
-
+ 
     ["select", release]                         -> runWithConfigAndLog (C.select (T.pack release))
 
-    ["proxy-status"]                            -> runWithConfig       (P.showStatus False)
-    ["proxy-status", "--show-slaves"]           -> runWithConfig       (P.showStatus True)
-    ["proxy-deploy", release]                   -> runWithConfigAndLog (P.deploy (T.pack release))
-    ["proxy-undeploy", deploy]                  -> runWithConfigAndLog (P.undeploy (T.pack deploy))
-    ["proxy-connect", endpoint, deploy]         -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
-    ["proxy-disconnect", endpoint]              -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
-    ["proxy-restart"]                           -> runWithConfigAndLog (P.restartProxy)
-    ["proxy-generate-ssl-certificate"]          -> runWithConfigAndLog (P.generateSslCertificate)
-    ["proxy-slave-update"]                      -> runWithConfigAndLog (P.slaveUpdate Nothing)
-    ["proxy-slave-update", "--repeat", ssecs]  -> do
+    ["status"]                                  -> runWithConfig       (P.showStatus False)
+    ["status", "--show-slaves"]                 -> runWithConfig       (P.showStatus True)
+    ["start", release]                          -> runWithConfigAndLog (P.createAndStart (T.pack release))
+    ["stop", deploy]                            -> runWithConfigAndLog (P.stopAndRemove (T.pack deploy))
+    ["connect", endpoint, deploy]               -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
+    ["disconnect", endpoint]                    -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
+    ["restart-frontend-proxy"]                  -> runWithConfigAndLog (P.restartProxy)
+    ["generate-ssl-certificate"]                -> runWithConfigAndLog (P.generateSslCertificate)
+    ["slave-update"]                            -> runWithConfigAndLog (P.slaveUpdate Nothing)
+    ["slave-update", "--repeat", ssecs]         -> do
       secs <- readCheck ssecs
       runWithConfigAndLog (P.slaveUpdate (Just secs))
 
@@ -129,27 +129,29 @@ usageText :: T.Text
 usageText = "\
   \General Usage:\n\
   \  hx-deploy-tool help\n\
-  \  hx-deploy-tool fetch-context [--retry]\n\
   \  hx-deploy-tool list-releases\n\
-  \  hx-deploy-tool unpack <release> <todir>\n\
-  \  hx-deploy-tool expand-template <templatePath> <destPath>\n\
   \  hx-deploy-tool show-log\n\
-  \  hx-deploy-tool show-default-nginx-config\n\
-  \  hx-deploy-tool aws-docker-login-cmd\n\
   \  hx-deploy-tool --version\n\
   \\n\
   \Deployment with a proxy:\n\
-  \  hx-deploy-tool proxy-status [--show-slaves]\n\
-  \  hx-deploy-tool proxy-deploy <release>\n\
-  \  hx-deploy-tool proxy-undeploy <release>\n\
-  \  hx-deploy-tool proxy-restart\n\
-  \  hx-deploy-tool proxy-generate-ssl-certificate\n\
-  \  hx-deploy-tool proxy-connect <endpoint> <release>\n\
-  \  hx-deploy-tool proxy-disconnect <endpoint>\n\
-  \  hx-deploy-tool proxy-slave-update [--repeat n]\n\
+  \  hx-deploy-tool status [--show-slaves]\n\
+  \  hx-deploy-tool start <release>\n\
+  \  hx-deploy-tool stop <release>\n\
+  \  hx-deploy-tool restart-frontend-proxy\n\
+  \  hx-deploy-tool connect <endpoint> <release>\n\
+  \  hx-deploy-tool disconnect <endpoint>\n\
   \\n\
   \Deployment without a proxy:\n\
   \  hx-deploy-tool select <release>\n\
+  \\n\
+  \Plumbing/Low Level Operations:\n\
+  \  hx-deploy-tool fetch-context [--retry]\n\
+  \  hx-deploy-tool unpack <release> <todir>\n\
+  \  hx-deploy-tool expand-template <templatePath> <destPath>\n\
+  \  hx-deploy-tool show-default-nginx-config\n\
+  \  hx-deploy-tool aws-docker-login-cmd\n\
+  \  hx-deploy-tool generate-ssl-certificate\n\
+  \  hx-deploy-tool slave-update [--repeat n]\n\
   \\n\
   \The config file is read from the file specified with HX_DEPLOY_CONFIG.\n\
   \It defaults to ../etc/hx-deploy-tool.json (relative to the executable).\n\
