@@ -47,57 +47,6 @@ import Types(IOR, REnv(..), getToolConfig, scopeInfo)
 import Util(unpackRelease, fetchDeployContext)
 import Commands.ProxyMode.LocalState(nginxConfTemplate)
 
--- Make the specified release the live release, replacing any existing release.
-select :: T.Text -> IOR ()
-select release = do
-  tcfg <- getToolConfig
-  case tc_deployMode tcfg of
-    DeployMode_select -> selectNoProxy release
-    _ -> P.select release
-
-selectNoProxy :: T.Text -> IOR ()
-selectNoProxy release = do
-  scopeInfo ("Selecting active release " <> release) $ do
-    tcfg <- getToolConfig
-    case tc_deployMode tcfg of
-      DeployMode_select -> return ()
-      _ -> error "The select command is not allowed when the proxy is enabled"
-    let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
-    let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
-
-    -- Fetch the context in case it has been updated
-    fetchDeployContext Nothing
-
-    liftIO $ createDirectoryIfMissing True newReleaseDir
-
-    -- unpack new release
-    unpackRelease id release newReleaseDir
-
-    -- Run the prestart command first, to pull/download any dependences.
-    -- we do the before stopping the existing release to minimise startup time.
-    -- do this first to minimise the new release startup time
-    scopeInfo "Running prestart script" $ liftIO $ do
-      withCurrentDirectory newReleaseDir $ do
-        rcfg <- adlFromJsonFile' "release.json"
-        callCommand (T.unpack (rc_prestartCommand rcfg))
-
-    currentExists <- liftIO $ doesDirectoryExist currentReleaseLink
-    when currentExists $ do
-      scopeInfo "Stopping existing release" $ liftIO $ do
-        withCurrentDirectory currentReleaseLink $ do
-          rcfg <- adlFromJsonFile' "release.json"
-          callCommand (T.unpack (rc_stopCommand rcfg))
-
-    scopeInfo "Symlinking new release" $ liftIO $ do
-      when currentExists $ removeLink currentReleaseLink
-      createSymbolicLink newReleaseDir currentReleaseLink
-
-    scopeInfo "Starting new release" $ liftIO $ do
-      withCurrentDirectory currentReleaseLink $ do
-        rcfg <- adlFromJsonFile' "release.json"
-        callCommand (T.unpack (rc_startCommand rcfg))
-
-
 -- List the releases available for installation
 listReleases :: IOR ()
 listReleases = do

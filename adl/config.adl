@@ -24,7 +24,7 @@ struct ToolConfig {
     BlobStoreConfig releases;
 
     Vector<DeployContext> deployContexts;
-    DeployMode deployMode = "select";
+    DeployMode deployMode;
 
     // Support for AWS health checks in proxy mode
     Maybe<HealthCheckConfig> healthCheck = { "just": {
@@ -34,7 +34,6 @@ struct ToolConfig {
 };
 
 union DeployMode {
-   Void select;
    ProxyModeConfig proxy;
 };
 

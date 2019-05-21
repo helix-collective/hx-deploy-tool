@@ -54,23 +54,6 @@ the master state from S3, and updates the local state to match.
 With a repeat argument, the command will repeat every n seconds,
 running indefinitely.
 
-# Deployments without a proxy
-The following subcommands are used to manage proxyless deployments:
-
-## hx-deploy-tool select <release>
-The command combines all of the necessary functions to replace
-any existing running release with the specified release.
-Specifically it:
-
- - Fetches the release archive from S3
- - Unpacks it
- - configures it for the local environment
- - runs the prestart script. This will typically pull
-   necessary docker images.
- - stops the current release (if any)
- - starts the new release
- - switches the `current` symlink to point to the new release
-
 # Misc subcommands
 The following other subcommands are available:
 

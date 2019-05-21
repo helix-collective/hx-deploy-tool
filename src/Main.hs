@@ -42,8 +42,6 @@ main = do
     ["unpack", release, toDir]                  -> runWithConfigAndLog (U.unpackRelease id (T.pack release) toDir)
     ["expand-template", templatePath, destPath] -> runWithConfigAndLog (U.injectContext id templatePath destPath)
     ["aws-docker-login-cmd"]                    -> runWithConfigAndLog (C.awsDockerLoginCmd)
- 
-    ["select", release]                         -> runWithConfigAndLog (C.select (T.pack release))
 
     ["status"]                                  -> runWithConfig       (P.showStatus False)
     ["status", "--show-slaves"]                 -> runWithConfig       (P.showStatus True)
@@ -140,9 +138,6 @@ usageText = "\
   \  hx-deploy-tool restart-frontend-proxy\n\
   \  hx-deploy-tool connect <endpoint> <release>\n\
   \  hx-deploy-tool disconnect <endpoint>\n\
-  \\n\
-  \Deployment without a proxy:\n\
-  \  hx-deploy-tool select <release>\n\
   \\n\
   \Plumbing/Low Level Operations:\n\
   \  hx-deploy-tool fetch-context [--retry]\n\
