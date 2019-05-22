@@ -42,7 +42,7 @@ Create and start a deployment (if it's not already running)
 ## hx-deploy-tool stop <release>
 Stop and remove a deployment
 
-## hx-deploy-tool restart <endpoint> <release>
+## hx-deploy-tool connect <endpoint> <release>
 Connect an endpoint to a running deployment
 
 ## hx-deploy-tool disconnect <endpoint>
