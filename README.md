@@ -49,8 +49,6 @@ It defaults to ../etc/hx-deploy-tool.json (relative to the executable).
 
 # Additional Information
 
-- [Installation and configuration][installation]
-- [Usage][help]
- 
-[installation]:docs/installation.md
-[help]:docs/help.md
+- [Installation and configuration](docs/installation.md)
+- [Usage](docs/help.md)
+
