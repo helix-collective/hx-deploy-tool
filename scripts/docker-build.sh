@@ -5,17 +5,11 @@
 
 set -ex
 
-USER=$(whoami)
-USERID=$(id -u)
-GROUPID=$(id -g)
-
-ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/..
-
-
 stack docker pull
 stack --docker build
 EXE=$(stack --docker exec which hx-deploy-tool)
-echo EXE $EXE
-cp $EXE /tmp/hx-deploy-tool.$(arch)-linux 
-gzip -f /tmp/hx-deploy-tool.$(arch)-linux
+TARGET=/tmp/hx-deploy-tool.$(stack --docker exec arch)-linux 
+cp $EXE $TARGET
+gzip -f $TARGET
+echo "Binary written to $TARGET.gz"
 
