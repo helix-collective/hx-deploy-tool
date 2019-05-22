@@ -1,0 +1,102 @@
+
+hx-deploy-tool is a simple tool to manage docker based application deployments
+at helix.
+[0m
+A software release is a (typically small) zip archive containing pure
+configuration, typically a docker-compose file and other configuration files
+templates. [1;38;5;245mhx-deploy-tool[0m can fetch such releases from AWS S3, unpack them,
+configure it with appropriate environmental details and start the system.
+[0m
+The hx-deploy-tool itself has a json formatted configuration file with a schema
+specfied in ADL (see config.adl in the source distribution). This specifies:
+[0m
+[1;38;5;115m▪ [0mthe local directories where releases are unpacked,[0m
+[1;38;5;115m▪ [0mthe AWS S3 location where release archives are installed.[0m
+[1;38;5;115m▪ [0mthe environment information available to configure packages
+[0m
+The tool supports two deployment modes:
+[0m
+[1;38;5;115m▪ [0mwithout a reverse proxy[0m
+[1;38;5;115m▪ [0mwith a reverse proxy
+[0m
+Without a proxy, the tool expects the single deployed release to directly open
+the apppropriate external network ports. With a proxy, the tool supports
+multiple deployed releases, telling each a local port to use. The tool manages
+an nginx reverse proxy which connects the external network ports to the deployed
+releases, allowing dynamic reconfiguration, and hence a no down time release
+process. Reverse proxy mode is enabled if the configuration file specifies one
+or more proxy endpoints.
+
+[1;38;5;158m1 Deployments with a proxy
+[1;38;5;158m────────────────────────────────────────────────────────────────────────────────[0m
+The following subcommands are used to manage reverse proxy deployments:
+
+[1;38;5;115m1.1 hx-deploy-tool proxy-status[0m
+Show the proxy system status: specifically the endpoints and live deploys.
+
+[1;38;5;115m1.2 hx-deploy-tool proxy-deploy <release>[0m
+Create and start a deployment (if it's not already running)
+
+[1;38;5;115m1.3 hx-deploy-tool proxy-undeploy <release>[0m
+Stop and remove a deployment
+
+[1;38;5;115m1.4 hx-deploy-tool proxy-connect <endpoint> <release>[0m
+Connect an endpoint to a running deployment
+
+[1;38;5;115m1.5 hx-deploy-tool proxy-disconnect <endpoint>[0m
+Disconnect an endpoint
+
+[1;38;5;115m1.6 hx-deploy-tool proxy-slave-update [--repeat n][0m
+If the tool is configured with proxy remote state, this fetches the master state
+from S3, and updates the local state to match. With a repeat argument, the
+command will repeat every n seconds, running indefinitely.
+
+[1;38;5;158m2 Deployments without a proxy
+[1;38;5;158m────────────────────────────────────────────────────────────────────────────────[0m
+The following subcommands are used to manage proxyless deployments:
+
+[1;38;5;115m2.1 hx-deploy-tool select <release>[0m
+The command combines all of the necessary functions to replace any existing
+running release with the specified release. Specifically it:
+[0m
+[1;38;5;66m❖ [0mFetches the release archive from S3[0m
+[1;38;5;66m❖ [0mUnpacks it[0m
+[1;38;5;66m❖ [0mconfigures it for the local environment[0m
+[1;38;5;66m❖ [0mruns the prestart script. This will typically pull necessary docker images.[0m
+[1;38;5;66m❖ [0mstops the current release (if any)[0m
+[1;38;5;66m❖ [0mstarts the new release[0m
+[1;38;5;66m❖ [0mswitches the [1;38;5;245mcurrent[0m symlink to point to the new release
+
+[1;38;5;158m3 Misc subcommands
+[1;38;5;158m────────────────────────────────────────────────────────────────────────────────[0m
+The following other subcommands are available:
+
+[1;38;5;115m3.1 hx-deploy-tool help[0m
+Shows this help text.
+
+[1;38;5;115m3.2 hx-deploy-tool fetch context [--retry][0m
+Downloads the environmental information files from AWS S3. The [1;38;5;245m--retry[0m option
+is useful during system bootstrap, and it is necessary to wait for the
+information files to be created.
+
+[1;38;5;115m3.3 hx-deploy-tool list-releases[0m
+Shows the release archives available in S3, most recent first.
+
+[1;38;5;115m3.4 hx-deploy-tool unpack <release> <todir>[0m
+Unpack and configure the specified release into the given directory.
+
+[1;38;5;115m3.5 hx-deploy-tool expand-template <templatePath> <destPath>[0m
+Injects the deploy context specified in [1;38;5;245mdeployContextFiles[0m into a template
+found at [1;38;5;245mtemplatePath[0m and saves the resulting file to [1;38;5;245mdestPath[0m
+
+[1;38;5;115m3.6 hx-deploy-tool aws-docker-login-cmd[0m
+Assuming this is run on a AWS EC2 instance, this subcommand runs the appropriate
+docker login command using the instance profile to permit access to configured
+ECR repositories. This command is typically run on first boot.
+
+[1;38;5;115m3.7 hx-deploy-tool show-log[0m
+Show the history of releases deployed via the select command.
+
+[1;38;5;115m3.8 hx-deploy-tool show-default-nginx-config[0m
+Outputs the default template for the nginx config.
+[0m
