@@ -224,6 +224,7 @@ writeProxyDockerCompose tcfg path = T.writeFile path (T.intercalate "\n" lines)
       , "      - ./nginx.conf:/etc/nginx/nginx.conf"
       , "      - " <> ledir <> "/etc/letsencrypt:" <> ledir <> "/etc/letsencrypt"
       , "      - " <> lewwwdir <> ":" <> lewwwdir
+      , "    restart: always"
       ]
     ledir = tc_letsencryptPrefixDir tcfg
     lewwwdir = tc_letsencryptWwwDir tcfg
