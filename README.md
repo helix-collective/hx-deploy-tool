@@ -47,4 +47,10 @@ The config file is read from the file specified with HX_DEPLOY_CONFIG.
 It defaults to ../etc/hx-deploy-tool.json (relative to the executable).
 ```
 
-More information is available in the [help text](doc/help.md)
+# Additional Information
+
+- [Installation and configuration][installation]
+- [Usage][help]
+ 
+[installation]:docs/installation.md
+[help]:docs/help.md
