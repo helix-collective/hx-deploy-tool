@@ -13,7 +13,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
 
-data-files:            doc/help.md
+data-files:            docs/help.md
                      , config/nginx.conf.tpl
 
 executable hx-deploy-tool

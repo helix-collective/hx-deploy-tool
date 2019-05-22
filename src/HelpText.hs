@@ -6,4 +6,4 @@ import qualified Data.ByteString as BS
 import Data.FileEmbed(embedFile)
 
 helpText :: BS.ByteString
-helpText = $(embedFile "doc/help.md")
+helpText = $(embedFile "docs/help.md")
