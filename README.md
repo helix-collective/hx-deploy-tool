@@ -27,12 +27,12 @@ General Usage:
   hx-deploy-tool --version
 
 Deployment:
-  hx-deploy-tool proxy-status [--show-slaves]
-  hx-deploy-tool proxy-deploy <release>
-  hx-deploy-tool proxy-undeploy <release>
-  hx-deploy-tool proxy-restart
-  hx-deploy-tool proxy-connect <endpoint> <release>
-  hx-deploy-tool proxy-disconnect <endpoint>
+  hx-deploy-tool status [--show-slaves]
+  hx-deploy-tool start <release>
+  hx-deploy-tool stop <release>
+  hx-deploy-tool restart-frontend-proxy
+  hx-deploy-tool connect <endpoint> <release>
+  hx-deploy-tool disconnect <endpoint>
 
 Plumbing/Low Level Operations:
   hx-deploy-tool fetch-context [--retry]
@@ -40,8 +40,8 @@ Plumbing/Low Level Operations:
   hx-deploy-tool aws-docker-login-cmd
   hx-deploy-tool expand-template <templatePath> <destPath>
   hx-deploy-tool show-default-nginx-config
-  hx-deploy-tool proxy-generate-ssl-certificate
-  hx-deploy-tool proxy-slave-update [--repeat n]
+  hx-deploy-tool generate-ssl-certificate
+  hx-deploy-tool slave-update [--repeat n]
 
 The config file is read from the file specified with HX_DEPLOY_CONFIG.
 It defaults to ../etc/hx-deploy-tool.json (relative to the executable).

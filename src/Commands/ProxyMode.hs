@@ -2,8 +2,8 @@
 module Commands.ProxyMode(
   select,
   showStatus,
-  deploy,
-  undeploy,
+  createAndStart,
+  stopAndRemove,
   connect,
   disconnect,
   slaveUpdate,
@@ -78,10 +78,10 @@ showStatus showSlaves = do
         T.putStrLn ("  " <> d_label d <> ": (localhost:" <> showText (d_port d) <> ")")
 
 -- | Create and start a deployment (if it's not already running)
-deploy :: T.Text -> IOR ()
-deploy release = do
+createAndStart :: T.Text -> IOR ()
+createAndStart release = do
   checkReleaseExists release
-  scopeInfo ("Creating deploy " <> release) $ do
+  scopeInfo ("Create and start deploy " <> release) $ do
     pm <- getProxyModeConfig
     tcfg <- getToolConfig
     state <- getState
@@ -91,9 +91,9 @@ deploy release = do
     createDeploy port = (CreateDeploy (Deploy release release port))
 
 -- | Stop and remove a deployment
-undeploy :: T.Text -> IOR ()
-undeploy release = do
-  scopeInfo ("Removing deploy " <> release) $ do
+stopAndRemove :: T.Text -> IOR ()
+stopAndRemove release = do
+  scopeInfo ("Stop and remove deploy " <> release) $ do
     pm <- getProxyModeConfig
     state <- getState
     deploy <- case SM.lookup release (s_deploys state) of
@@ -170,11 +170,11 @@ select release = do
   checkReleaseExists release
   pm <- getProxyModeConfig
   origState <- getState
-  deploy release
+  createAndStart release
   connect endpoint release
   case SM.lookup endpoint (s_connections origState) of
     Nothing -> return ()
-    Just deployLabel -> when (deployLabel /= release) (undeploy deployLabel)
+    Just deployLabel -> when (deployLabel /= release) (stopAndRemove deployLabel)
 
 -- | Allocate an open port in the configured range
 allocatePort :: ProxyModeConfig -> State -> IO Word32
