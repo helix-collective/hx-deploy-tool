@@ -51,6 +51,7 @@ main = do
     ["disconnect", endpoint]                    -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
     ["restart-frontend-proxy"]                  -> runWithConfigAndLog (P.restartProxy)
     ["generate-ssl-certificate"]                -> runWithConfigAndLog (P.generateSslCertificate)
+    ["slave-flush"]                             -> runWithConfigAndLog (P.slaveFlush)
     ["slave-update"]                            -> runWithConfigAndLog (P.slaveUpdate Nothing)
     ["slave-update", "--repeat", ssecs]         -> do
       secs <- readCheck ssecs
@@ -149,6 +150,7 @@ usageText = "\
   \  hx-deploy-tool show-default-nginx-config\n\
   \  hx-deploy-tool aws-docker-login-cmd\n\
   \  hx-deploy-tool generate-ssl-certificate\n\
+  \  hx-deploy-tool slave-flush\n\
   \  hx-deploy-tool slave-update [--repeat n]\n\
   \\n\
   \The config file is read from the file specified with HX_DEPLOY_CONFIG.\n\

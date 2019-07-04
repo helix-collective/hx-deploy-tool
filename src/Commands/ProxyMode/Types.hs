@@ -6,11 +6,17 @@ import qualified Data.Text as T
 import ADL.Config(EndPoint(..), ToolConfig(..), DeployMode(..), ProxyModeConfig(..))
 import ADL.State(State(..), Deploy(..))
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
+import Data.Time(UTCTime)
 
 data StateAccess = StateAccess {
   sa_get :: IOR State,
-  sa_getSlaves :: IOR [(T.Text,State)],
+  sa_getSlaves :: IOR [(T.Text,SlaveState)],
   sa_update :: (State -> State) -> IOR ()
+}
+
+data SlaveState = SlaveState {
+  ss_state :: State,
+  ss_lastModified :: Maybe UTCTime
 }
 
 -- | The actions we can apply to change the state
