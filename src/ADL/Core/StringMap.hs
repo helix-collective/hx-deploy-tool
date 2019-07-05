@@ -7,7 +7,8 @@ module ADL.Core.StringMap(
   delete,
   lookup,
   elems,
-  empty
+  empty,
+  singleton
 ) where
 
 -- Newtype wrapper around a map with Text keys
@@ -18,6 +19,7 @@ import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Data.Semigroup as S
 
 import ADL.Core.Value
 import Data.Monoid
@@ -26,9 +28,12 @@ import Data.Proxy
 newtype StringMap a = StringMap {toMap :: M.Map T.Text a}
   deriving (Eq,Ord,Show)
 
+instance S.Semigroup (StringMap a) where
+  (StringMap m1) <> (StringMap m2) = StringMap (m1 <> m2)
+
 instance Monoid (StringMap a) where
   mempty = StringMap mempty
-  mappend (StringMap m1) (StringMap m2) = mempty
+  mappend = (S.<>)  -- redundant from ghc 8.4
 
 instance forall a . (AdlValue a) => AdlValue (StringMap a) where
   atype _ = T.concat ["StringMap<",atype (Proxy :: Proxy a),">"]
@@ -39,6 +44,9 @@ instance forall a . (AdlValue a) => AdlValue (StringMap a) where
   jsonParser = withJsonObject $ \ctx hm ->
     let parse (k,jv) = (\jv -> (k,jv)) <$> runJsonParser jsonParser (ParseField k:ctx) jv
     in (StringMap . M.fromList) <$> traverse parse (HM.toList hm)
+
+singleton :: T.Text -> a -> StringMap a
+singleton key value = StringMap (M.singleton key value)
 
 lookup :: T.Text -> StringMap a -> Maybe a
 lookup key (StringMap map) = M.lookup key map

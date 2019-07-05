@@ -2,7 +2,7 @@
 # Run the adl compiler using the published docker container
 
 IMAGE=helixta/hxadl
-VERSION=0.11.3
+VERSION=0.17
 
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null && pwd )"
 docker run \

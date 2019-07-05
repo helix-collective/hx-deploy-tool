@@ -1,16 +1,5 @@
 flags: {}
-resolver: lts-11.22
-packages:
-- '.'
-- location:
-    git: git@github.com:timbod7/adl.git
-    commit: 8844fc2346f606e912d56d44a177e3fb5ca0d59d
-  subdirs:
-  - haskell/utils
-  - haskell/runtime
-  - haskell/compiler-lib
-  - haskell/compiler
-  extra-dep: true
+resolver: lts-13.26
 extra-deps:
   - amazonka-1.6.1
   - amazonka-core-1.6.1
