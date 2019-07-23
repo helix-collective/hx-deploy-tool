@@ -1,0 +1,41 @@
+{
+    "releasesDir": "{RELEASE DIRECTORY}",
+    "contextCache": "{CONFIG DIRECTORY}",
+    "logFile": "{LOG FILE LOCATION}",
+    "letsencryptPrefixDir": "{PREFIX DIRECTORY}",
+    "letsencryptWwwDir": "{WEBSERVER DIRECTORY}",
+    "autoCertName": "{AWS SSH CERT NAME}",
+    "autoCertContactEmail": "",
+    "releases": {
+      "s3": "s3://{S3 RELEASE BUCKET PATH}"
+    },
+    "deployContexts": [],
+    "deployMode": {
+      "proxy": {
+        "endPoints": {
+          "main": {
+            "label": "{ENVIRONMENT LABEL}",
+            "serverNames": [
+              "{APP SERVER NAME}"
+            ],
+            "etype": "httpOnly"
+          }
+        },
+        "remoteStateS3": {
+          "just": "s3://{S3 BUCKET FOR TRACKING APP STATE}"
+        },
+        "dynamicPortRange": {
+          "v1": 8000,
+          "v2": 8100
+        },
+        "slaveLabel": "ec2InstanceId",
+        "nginxConfTemplatePath": "nothing"
+      }
+    },
+    "healthCheck": {
+      "just": {
+        "incomingPath": "/{ENDPOINT FOR APP HEALTHCHECK}",
+        "outgoingPath": "/"
+      }
+    }
+  }
