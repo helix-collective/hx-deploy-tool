@@ -31,6 +31,13 @@ overidden by setting the `HX_DEPLOY_CONFIG` environment variable.
 
 The configuration file must be json formatted, and be consistent with the
 [ToolConfig][toolconfig-adl] ADL type (ADL is the [Algebraic Data Language][adl]).
+[An example configuration file can be found at: ](docs/example_deploy.json)
+
+Additionally, aws credentials must be supplied and will be expected at either:
+$HOME/.aws/credentials file
+standard environment variables
+EC2 instance metadata
+
 
 [releases]:https://github.com/helix-collective/hx-deploy-tool/releases
 [stack]:https://docs.haskellstack.org/en/stable/README/ 
