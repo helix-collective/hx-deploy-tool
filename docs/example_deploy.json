@@ -1,7 +1,7 @@
 {
     "releasesDir": "{RELEASE DIRECTORY}",
     "contextCache": "{CONFIG DIRECTORY}",
-    "logFile": "{LOG FILE LOCATION}",
+    "logFile": "{LOG FILE LOCATION: requires directory to exist}",
     "letsencryptPrefixDir": "{PREFIX DIRECTORY}",
     "letsencryptWwwDir": "{WEBSERVER DIRECTORY}",
     "autoCertName": "{AWS SSH CERT NAME}",
