@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Commands.ProxyMode(
-  select,
   showStatus,
   createAndStart,
   stopAndRemove,
@@ -161,20 +160,6 @@ slaveUpdate_ = do
     sa_update localState (const state)
     label <- getSlaveLabel
     writeSlaveState remoteStateS3 label state
-
--- Make the specified release the live deploy on the endpoint called "main".
--- Any other existing deploy on that endpoint will be shut down
-select  :: T.Text -> IOR ()
-select release = do
-  let endpoint = "main"
-  checkReleaseExists release
-  pm <- getProxyModeConfig
-  origState <- getState
-  createAndStart release
-  connect endpoint release
-  case SM.lookup endpoint (s_connections origState) of
-    Nothing -> return ()
-    Just deployLabel -> when (deployLabel /= release) (stopAndRemove deployLabel)
 
 -- | Allocate an open port in the configured range
 allocatePort :: ProxyModeConfig -> State -> IO Word32

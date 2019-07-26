@@ -89,7 +89,7 @@ instance AdlValue DeployContextSource where
         <|> parseFail "expected a DeployContextSource"
 
 data DeployMode
-    = DeployMode_select
+    = DeployMode_noproxy
     | DeployMode_proxy ProxyModeConfig
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
@@ -97,12 +97,12 @@ instance AdlValue DeployMode where
     atype _ = "config.DeployMode"
     
     jsonGen = genUnion (\jv -> case jv of
-        DeployMode_select -> genUnionVoid "select"
+        DeployMode_noproxy -> genUnionVoid "noproxy"
         DeployMode_proxy v -> genUnionValue "proxy" v
         )
     
     jsonParser
-        =   parseUnionVoid "select" DeployMode_select
+        =   parseUnionVoid "noproxy" DeployMode_noproxy
         <|> parseUnionValue "proxy" DeployMode_proxy
         <|> parseFail "expected a DeployMode"
 
@@ -305,7 +305,7 @@ data ToolConfig = ToolConfig
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: BlobStoreConfig -> [DeployContext] -> ToolConfig
-mkToolConfig releases deployContexts = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContexts DeployMode_select (Prelude.Just (HealthCheckConfig "/health-check" "/"))
+mkToolConfig releases deployContexts = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContexts DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -334,7 +334,7 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
         <*> parseField "deployContexts"
-        <*> parseFieldDef "deployMode" DeployMode_select
+        <*> parseFieldDef "deployMode" DeployMode_noproxy
         <*> parseFieldDef "healthCheck" (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 data Verbosity

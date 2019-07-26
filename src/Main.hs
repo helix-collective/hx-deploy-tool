@@ -43,11 +43,9 @@ main = do
     ["expand-template", templatePath, destPath] -> runWithConfigAndLog (U.injectContext id templatePath destPath)
     ["aws-docker-login-cmd"]                    -> runWithConfigAndLog (C.awsDockerLoginCmd)
  
-    ["select", release]                         -> runWithConfigAndLog (C.select (T.pack release))
-
     ["status"]                                  -> runWithConfig       (P.showStatus False)
     ["status", "--show-slaves"]                 -> runWithConfig       (P.showStatus True)
-    ["start", release]                          -> runWithConfigAndLog (P.createAndStart (T.pack release))
+    ["start", release]                          -> runWithConfigAndLog (C.createAndStart (T.pack release))
     ["stop", deploy]                            -> runWithConfigAndLog (P.stopAndRemove (T.pack deploy))
     ["connect", endpoint, deploy]               -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
     ["disconnect", endpoint]                    -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
