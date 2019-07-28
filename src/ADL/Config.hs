@@ -1,9 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     BlobStoreConfig(..),
+    ConfigContextSource,
+    ConfigTopicName,
+    DeployConfigTopicName,
     DeployContext(..),
     DeployContextSource(..),
     DeployMode(..),
+    DynamicConfigMode,
+    DynamicConfigTopic(..),
+    DynamicConfigTopicName,
     EndPoint(..),
     EndPointType(..),
     HealthCheckConfig(..),
@@ -12,6 +18,7 @@ module ADL.Config(
     ProxyModeConfig(..),
     SslCertMode(..),
     SslCertPaths(..),
+    StringKeyMap,
     ToolConfig(..),
     Verbosity(..),
 ) where
@@ -45,6 +52,12 @@ instance AdlValue BlobStoreConfig where
         =   parseUnionValue "s3" BlobStoreConfig_s3
         <|> parseUnionValue "localdir" BlobStoreConfig_localdir
         <|> parseFail "expected a BlobStoreConfig"
+
+type ConfigContextSource = DeployContextSource
+
+type ConfigTopicName = T.Text
+
+type DeployConfigTopicName = ConfigTopicName
 
 data DeployContext = DeployContext
     { dc_name :: T.Text
@@ -105,6 +118,31 @@ instance AdlValue DeployMode where
         =   parseUnionVoid "noproxy" DeployMode_noproxy
         <|> parseUnionValue "proxy" DeployMode_proxy
         <|> parseFail "expected a DeployMode"
+
+type DynamicConfigMode = T.Text
+
+data DynamicConfigTopic = DynamicConfigTopic
+    { dct_defaultMode :: T.Text
+    , dct_modes :: (StringKeyMap DynamicConfigMode ConfigContextSource)
+    }
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+mkDynamicConfigTopic :: T.Text -> (StringKeyMap DynamicConfigMode ConfigContextSource) -> DynamicConfigTopic
+mkDynamicConfigTopic defaultMode modes = DynamicConfigTopic defaultMode modes
+
+instance AdlValue DynamicConfigTopic where
+    atype _ = "config.DynamicConfigTopic"
+    
+    jsonGen = genObject
+        [ genField "defaultMode" dct_defaultMode
+        , genField "modes" dct_modes
+        ]
+    
+    jsonParser = DynamicConfigTopic
+        <$> parseField "defaultMode"
+        <*> parseField "modes"
+
+type DynamicConfigTopicName = ConfigTopicName
 
 data EndPoint = EndPoint
     { ep_label :: ADL.Types.EndPointLabel
@@ -221,7 +259,8 @@ instance AdlValue MachineLabel where
         <|> parseFail "expected a MachineLabel"
 
 data ProxyModeConfig = ProxyModeConfig
-    { pm_endPoints :: StringMap (EndPoint)
+    { pm_dynConfig :: (StringKeyMap DynamicConfigTopicName DynamicConfigTopic)
+    , pm_endPoints :: StringMap (EndPoint)
     , pm_remoteStateS3 :: (ADL.Sys.Types.Maybe ADL.Types.S3Path)
     , pm_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
     , pm_slaveLabel :: MachineLabel
@@ -230,13 +269,14 @@ data ProxyModeConfig = ProxyModeConfig
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkProxyModeConfig :: StringMap (EndPoint) -> ProxyModeConfig
-mkProxyModeConfig endPoints = ProxyModeConfig endPoints Prelude.Nothing ((,) 8000 8100) MachineLabel_ec2InstanceId Prelude.Nothing
+mkProxyModeConfig endPoints = ProxyModeConfig (stringMapFromList []) endPoints Prelude.Nothing ((,) 8000 8100) MachineLabel_ec2InstanceId Prelude.Nothing
 
 instance AdlValue ProxyModeConfig where
     atype _ = "config.ProxyModeConfig"
     
     jsonGen = genObject
-        [ genField "endPoints" pm_endPoints
+        [ genField "dynConfig" pm_dynConfig
+        , genField "endPoints" pm_endPoints
         , genField "remoteStateS3" pm_remoteStateS3
         , genField "dynamicPortRange" pm_dynamicPortRange
         , genField "slaveLabel" pm_slaveLabel
@@ -244,7 +284,8 @@ instance AdlValue ProxyModeConfig where
         ]
     
     jsonParser = ProxyModeConfig
-        <$> parseField "endPoints"
+        <$> parseFieldDef "dynConfig" (stringMapFromList [])
+        <*> parseField "endPoints"
         <*> parseFieldDef "remoteStateS3" Prelude.Nothing
         <*> parseFieldDef "dynamicPortRange" ((,) 8000 8100)
         <*> parseFieldDef "slaveLabel" MachineLabel_ec2InstanceId
@@ -289,6 +330,8 @@ instance AdlValue SslCertPaths where
         <$> parseField "sslCertificate"
         <*> parseField "sslCertificateKey"
 
+type StringKeyMap key value = StringMap (value)
+
 data ToolConfig = ToolConfig
     { tc_releasesDir :: ADL.Types.FilePath
     , tc_contextCache :: ADL.Types.FilePath
@@ -298,14 +341,15 @@ data ToolConfig = ToolConfig
     , tc_autoCertName :: T.Text
     , tc_autoCertContactEmail :: T.Text
     , tc_releases :: BlobStoreConfig
+    , tc_configContexts :: (StringKeyMap DeployConfigTopicName ConfigContextSource)
     , tc_deployContexts :: [DeployContext]
     , tc_deployMode :: DeployMode
     , tc_healthCheck :: (ADL.Sys.Types.Maybe HealthCheckConfig)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkToolConfig :: BlobStoreConfig -> [DeployContext] -> ToolConfig
-mkToolConfig releases deployContexts = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContexts DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
+mkToolConfig :: BlobStoreConfig -> ToolConfig
+mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases (stringMapFromList []) [  ] DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -319,6 +363,7 @@ instance AdlValue ToolConfig where
         , genField "autoCertName" tc_autoCertName
         , genField "autoCertContactEmail" tc_autoCertContactEmail
         , genField "releases" tc_releases
+        , genField "configContexts" tc_configContexts
         , genField "deployContexts" tc_deployContexts
         , genField "deployMode" tc_deployMode
         , genField "healthCheck" tc_healthCheck
@@ -333,7 +378,8 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "autoCertName" "hxdeploytoolcert"
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
-        <*> parseField "deployContexts"
+        <*> parseFieldDef "configContexts" (stringMapFromList [])
+        <*> parseFieldDef "deployContexts" [  ]
         <*> parseFieldDef "deployMode" DeployMode_noproxy
         <*> parseFieldDef "healthCheck" (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 

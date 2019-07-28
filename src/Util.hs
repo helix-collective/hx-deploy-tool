@@ -20,7 +20,7 @@ import qualified Control.Monad.Trans.AWS as AWS
 
 import ADL.Config(ToolConfig(..), DeployMode(..), DeployContext(..), DeployContextSource(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
-import ADL.Core(adlFromJsonFile')
+import ADL.Core(adlFromJsonFile', adlToJsonFile)
 import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Codec.Archive.Zip(withArchive, unpackInto)

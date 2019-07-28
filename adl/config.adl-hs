@@ -4,6 +4,9 @@ import adlc.config.haskell.HaskellFieldPrefix;
 
 annotation DeployContext HaskellFieldPrefix "dc_";
 annotation DeployContextSource HaskellFieldPrefix "dcs_";
+annotation ConfigContextSource HaskellFieldPrefix "ccs_";
+annotation DynamicConfigTopic HaskellFieldPrefix "dct_";
+
 annotation EndPoint HaskellFieldPrefix "ep_";
 annotation EndPointType HaskellFieldPrefix "ep_";
 annotation ToolConfig HaskellFieldPrefix "tc_";

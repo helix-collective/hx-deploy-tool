@@ -7,6 +7,19 @@ import sys.types.Map;
 import sys.types.Pair;
 import sys.types.Maybe;
 
+/// Phantom Key type naming the string key type
+type StringKeyMap<Key,Value> = StringMap<Value>;
+
+/// ConfigTopic is a name of one of the keys of the top level object used for template interpolation
+/// Topic names must be unique.
+type ConfigTopicName = String;
+
+/// Name of a topic as part of the static config contexts - eg 'infrastructure' 'secrets'
+type DeployConfigTopicName = ConfigTopicName;
+
+/// Name of a switchable dynamic config topic - eg 'queue' 'processingopts'
+type DynamicConfigTopicName = ConfigTopicName;
+
 /// Configuration file for the deployment tool
 struct ToolConfig {
     FilePath releasesDir = "/opt/releases";
@@ -23,7 +36,12 @@ struct ToolConfig {
     /// The storage location for release zip files
     BlobStoreConfig releases;
 
-    Vector<DeployContext> deployContexts;
+    /// Config contexts (for non-dynmic config contexts) aka deployContexts
+    StringKeyMap<DeployConfigTopicName, ConfigContextSource> configContexts = {};
+
+    /// Original name deployContexts for backwards compatibility
+    Vector<DeployContext> deployContexts = [];
+
     DeployMode deployMode = "noproxy";
 
     // Support for AWS health checks in proxy mode
@@ -43,8 +61,10 @@ union BlobStoreConfig {
    FilePath localdir;
 };
 
-
 struct ProxyModeConfig {
+    /// Configured dynamic configs
+    StringKeyMap<DynamicConfigTopicName, DynamicConfigTopic> dynConfig = {};
+
     /// The configured endpoints.
     StringMap<EndPoint> endPoints;
 
@@ -77,6 +97,28 @@ union MachineLabel {
   Void ec2InstanceId;
 };
 
+/// Name of a "mode" in DynamicConfig - specific to a topic
+/// Mode meaning is specific to an application - specific to a topic
+/// eg: topic "queue" could have modes "active" "inactive"
+type DynamicConfigMode = String;
+
+/// A a named topic (see DynamicConfigTopicName)
+struct DynamicConfigTopic {
+  // A topic has many modes defined here.
+  // A topic always has one mode in use.
+  // A topic has a defaultMode
+
+  // The mode in use provides a a config context available in config templates
+  // {{topic}}
+  // In addition to those from the toolconfig.deployContexts
+
+  /// Mode used by default (eg on start before any mode is specified)
+  String defaultMode;
+
+  /// String named dynamic config modes.
+  StringKeyMap<DynamicConfigMode, ConfigContextSource> modes;
+};
+
 // A proxy exposed endpoint
 struct EndPoint {
   EndPointLabel label;
@@ -103,12 +145,14 @@ struct SslCertPaths {
   FilePath sslCertificateKey;
 };
 
+/// TODO: Replace with StringKeyMap
 struct DeployContext
 {
     String name;
     DeployContextSource source;
 };
 
+/// Methods of providing text for a config context
 union DeployContextSource
 {
     // Context from a local file
@@ -120,6 +164,9 @@ union DeployContextSource
     /// Context from AWS secrets manager secret
     String awsSecretArn;
 };
+
+/// TODO: propagate name change to ConfigContextSource
+type ConfigContextSource = DeployContextSource;
 
 union Verbosity
 {
