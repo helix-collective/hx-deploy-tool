@@ -37,6 +37,8 @@ Additionally, aws credentials must be supplied and will be expected at either:
 $HOME/.aws/credentials file
 standard environment variables
 EC2 instance metadata
+as per `Credentials Discover` mode in the amazonka library:
+http://hackage.haskell.org/package/amazonka-1.6.1/docs/Network-AWS-Auth.html
 
 
 [releases]:https://github.com/helix-collective/hx-deploy-tool/releases

@@ -49,6 +49,8 @@ http {
       proxy_set_header Host $host;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_pass http://localhost:{{port}};
+      proxy_send_timeout          300;
+      proxy_read_timeout          300;
     }
   }
 {{/port}}
@@ -82,6 +84,8 @@ http {
       proxy_set_header Host $host;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_pass http://localhost:{{port}};
+      proxy_send_timeout          300;
+      proxy_read_timeout          300;
     }
   }
 {{/port}}
