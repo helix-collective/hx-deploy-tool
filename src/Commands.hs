@@ -48,20 +48,17 @@ import Util(unpackRelease, fetchDeployContext)
 import Commands.ProxyMode.LocalState(nginxConfTemplate)
 
 -- Make the specified release the live release, replacing any existing release.
-select :: T.Text -> IOR ()
-select release = do
+createAndStart :: T.Text -> IOR ()
+createAndStart release = do
   tcfg <- getToolConfig
   case tc_deployMode tcfg of
-    DeployMode_select -> selectNoProxy release
-    _ -> P.select release
+    DeployMode_noproxy -> startNoProxy release
+    _ -> P.createAndStart release
 
-selectNoProxy :: T.Text -> IOR ()
-selectNoProxy release = do
+startNoProxy :: T.Text -> IOR ()
+startNoProxy release = do
   scopeInfo ("Selecting active release " <> release) $ do
     tcfg <- getToolConfig
-    case tc_deployMode tcfg of
-      DeployMode_select -> return ()
-      _ -> error "The select command is not allowed when the proxy is enabled"
     let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
     let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
 
