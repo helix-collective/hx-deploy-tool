@@ -94,6 +94,31 @@ startNoProxy release = do
         rcfg <- adlFromJsonFile' "release.json"
         callCommand (T.unpack (rc_startCommand rcfg))
 
+-- Stop the specified deployment.
+stopDeploy :: T.Text -> IOR ()
+stopDeploy deploy = do
+  tcfg <- getToolConfig
+  case tc_deployMode tcfg of
+    DeployMode_noproxy -> stopNoProxy deploy
+    _ -> P.stopAndRemove deploy
+
+stopNoProxy :: T.Text -> IOR ()
+stopNoProxy deploy = do
+  tcfg <- getToolConfig
+  --let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack deploy))
+  let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
+  currentExists <- liftIO $ doesDirectoryExist currentReleaseLink
+  scopeInfo ("Stopping active deployment " <> deploy) $ liftIO $ do
+    when currentExists $ do
+      withCurrentDirectory currentReleaseLink $ liftIO $ do
+          rcfg <- adlFromJsonFile' "release.json"
+          callCommand (T.unpack (rc_stopCommand rcfg))
+
+
+
+  scopeInfo ("Removing Symlink for deployment") $ liftIO $ do
+    when currentExists $ removeLink currentReleaseLink
+    
 
 -- List the releases available for installation
 listReleases :: IOR ()
