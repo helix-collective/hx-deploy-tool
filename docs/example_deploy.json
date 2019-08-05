@@ -22,7 +22,7 @@
           }
         },
         "remoteStateS3": {
-          "just": "s3://{S3 BUCKET FOR TRACKING APP STATE}"
+          "just": "s3://{S3 BUCKET FOR TRACKING APP STATE... IF THIS IS MISSING IT WILL TRACK STATE LOCALLY}"
         },
         "dynamicPortRange": {
           "v1": 8000,

@@ -77,7 +77,7 @@ The following other subcommands are available:
 ## hx-deploy-tool help
 Shows this help text.
 
-## hx-deploy-tool fetch context [--retry]
+## hx-deploy-tool fetch-context [--retry]
 Downloads the environmental information files from AWS S3. The
 `--retry` option is useful during system bootstrap, and it is
 necessary to wait for the information files to be created.
