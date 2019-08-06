@@ -46,7 +46,7 @@ main = do
     ["status"]                                  -> runWithConfig       (P.showStatus False)
     ["status", "--show-slaves"]                 -> runWithConfig       (P.showStatus True)
     ["start", release]                          -> runWithConfigAndLog (C.createAndStart (T.pack release))
-    ["stop", deploy]                            -> runWithConfigAndLog (P.stopAndRemove (T.pack deploy))
+    ["stop", deploy]                            -> runWithConfigAndLog (C.stopDeploy (T.pack deploy))
     ["connect", endpoint, deploy]               -> runWithConfigAndLog (P.connect (T.pack endpoint) (T.pack deploy))
     ["disconnect", endpoint]                    -> runWithConfigAndLog (P.disconnect (T.pack endpoint))
     ["restart-frontend-proxy"]                  -> runWithConfigAndLog (P.restartProxy)
