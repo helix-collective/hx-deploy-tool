@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     BlobStoreConfig(..),
+    ConfigContextSource,
     DeployContext(..),
     DeployContextSource(..),
     DeployMode(..),
@@ -22,7 +23,6 @@ import qualified ADL.Sys.Types
 import qualified ADL.Types
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Map as M
 import qualified Data.Proxy
 import qualified Data.Text as T
 import qualified Data.Word
@@ -45,6 +45,8 @@ instance AdlValue BlobStoreConfig where
         =   parseUnionValue "s3" BlobStoreConfig_s3
         <|> parseUnionValue "localdir" BlobStoreConfig_localdir
         <|> parseFail "expected a BlobStoreConfig"
+
+type ConfigContextSource = DeployContextSource
 
 data DeployContext = DeployContext
     { dc_name :: T.Text
@@ -221,7 +223,7 @@ instance AdlValue MachineLabel where
         <|> parseFail "expected a MachineLabel"
 
 data ProxyModeConfig = ProxyModeConfig
-    { pm_endPoints :: StringMap (EndPoint)
+    { pm_endPoints :: (ADL.Types.StringKeyMap ADL.Types.EndPointLabel EndPoint)
     , pm_remoteStateS3 :: (ADL.Sys.Types.Maybe ADL.Types.S3Path)
     , pm_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
     , pm_slaveLabel :: MachineLabel
@@ -229,7 +231,7 @@ data ProxyModeConfig = ProxyModeConfig
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkProxyModeConfig :: StringMap (EndPoint) -> ProxyModeConfig
+mkProxyModeConfig :: (ADL.Types.StringKeyMap ADL.Types.EndPointLabel EndPoint) -> ProxyModeConfig
 mkProxyModeConfig endPoints = ProxyModeConfig endPoints Prelude.Nothing ((,) 8000 8100) MachineLabel_ec2InstanceId Prelude.Nothing
 
 instance AdlValue ProxyModeConfig where
@@ -298,6 +300,7 @@ data ToolConfig = ToolConfig
     , tc_autoCertName :: T.Text
     , tc_autoCertContactEmail :: T.Text
     , tc_releases :: BlobStoreConfig
+    , tc_configContexts :: (ADL.Types.StringKeyMap ADL.Types.DeployConfigTopicName ConfigContextSource)
     , tc_deployContexts :: [DeployContext]
     , tc_deployMode :: DeployMode
     , tc_healthCheck :: (ADL.Sys.Types.Maybe HealthCheckConfig)
@@ -305,7 +308,7 @@ data ToolConfig = ToolConfig
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: BlobStoreConfig -> ToolConfig
-mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases [  ] DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
+mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases (stringMapFromList []) [  ] DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -319,6 +322,7 @@ instance AdlValue ToolConfig where
         , genField "autoCertName" tc_autoCertName
         , genField "autoCertContactEmail" tc_autoCertContactEmail
         , genField "releases" tc_releases
+        , genField "configContexts" tc_configContexts
         , genField "deployContexts" tc_deployContexts
         , genField "deployMode" tc_deployMode
         , genField "healthCheck" tc_healthCheck
@@ -333,6 +337,7 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "autoCertName" "hxdeploytoolcert"
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
+        <*> parseFieldDef "configContexts" (stringMapFromList [])
         <*> parseFieldDef "deployContexts" [  ]
         <*> parseFieldDef "deployMode" DeployMode_noproxy
         <*> parseFieldDef "healthCheck" (Prelude.Just (HealthCheckConfig "/health-check" "/"))

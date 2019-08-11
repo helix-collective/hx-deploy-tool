@@ -9,7 +9,6 @@ import Control.Applicative( (<$>), (<*>), (<|>) )
 import qualified ADL.Types
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Map as M
 import qualified Data.Proxy
 import qualified Data.Text as T
 import qualified Data.Word
@@ -40,12 +39,12 @@ instance AdlValue Deploy where
         <*> parseField "port"
 
 data State = State
-    { s_deploys :: StringMap (Deploy)
-    , s_connections :: StringMap (ADL.Types.DeployLabel)
+    { s_deploys :: (ADL.Types.StringKeyMap ADL.Types.DeployLabel Deploy)
+    , s_connections :: (ADL.Types.StringKeyMap ADL.Types.EndPointLabel ADL.Types.DeployLabel)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkState :: StringMap (Deploy) -> StringMap (ADL.Types.DeployLabel) -> State
+mkState :: (ADL.Types.StringKeyMap ADL.Types.DeployLabel Deploy) -> (ADL.Types.StringKeyMap ADL.Types.EndPointLabel ADL.Types.DeployLabel) -> State
 mkState deploys connections = State deploys connections
 
 instance AdlValue State where

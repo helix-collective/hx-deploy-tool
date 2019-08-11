@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 module Util where
-
+  
+import qualified Data.Map as M
 import qualified ADL.Core.StringMap as SM
 import qualified Data.Aeson as JS
 import qualified Data.ByteString.Lazy as LBS
@@ -22,6 +23,7 @@ import qualified Control.Monad.Trans.AWS as AWS
 import ADL.Config(ToolConfig(..), DeployMode(..), DeployContext(..), DeployContextSource(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile', runJsonParser, textFromParseContext, AdlValue(..), ParseResult(..))
+import ADL.Types(DeployConfigTopicName)
 import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Codec.Archive.Zip(withArchive, unpackInto)
@@ -48,6 +50,9 @@ import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 deployContextCacheFilePath :: ToolConfig -> DeployContext -> FilePath
 deployContextCacheFilePath tcfg dc = T.unpack (tc_contextCache tcfg) </> T.unpack (dc_name dc) <> ".json"
 
+configContextCacheFilePath :: ToolConfig -> DeployConfigTopicName -> FilePath
+configContextCacheFilePath tcfg dctn = T.unpack (tc_contextCache tcfg) </> T.unpack dctn <> ".json"
+
 --- Download the infrastructure context files from the blobstore
 fetchDeployContext :: Maybe Int -> IOR ()
 fetchDeployContext retryAfter = do
@@ -56,6 +61,18 @@ fetchDeployContext retryAfter = do
     awsEnvFn <- S3.mkAwsEnvFn
     do
       liftIO $ createDirectoryIfMissing True (T.unpack (tc_contextCache tcfg))
+
+      for_ (M.toList (SM.toMap (tc_configContexts tcfg))) $ \dctn_dcs -> do
+        let dctn = fst dctn_dcs
+        let dcs = snd dctn_dcs
+        let cacheFilePath = configContextCacheFilePath tcfg dctn
+        case retryAfter of
+          Nothing -> return ()
+          Just delay -> await awsEnvFn dcs delay
+
+        info ("Downloading " <> T.pack cacheFilePath <> " from " <> dcLabel dcs)
+        dcFetchToFile awsEnvFn dcs cacheFilePath
+
       for_ (tc_deployContexts tcfg) $ \dc -> do
         let cacheFilePath = deployContextCacheFilePath tcfg dc
         case retryAfter of
@@ -152,13 +169,23 @@ checkReleaseExists release = do
 loadMergedContext :: ToolConfig -> IO JS.Value
 loadMergedContext tcfg = do
   let cacheDir = T.unpack (tc_contextCache tcfg)
+
+  valuesx <- for (M.toList (SM.toMap (tc_configContexts tcfg))) $ \dctn_dcs -> do
+    let dctn = fst dctn_dcs
+    let dcs = snd dctn_dcs
+    let cacheFilePath = configContextCacheFilePath tcfg dctn
+    lbs <- LBS.readFile cacheFilePath
+    case JS.eitherDecode' lbs of
+     (Left e) -> error ("Unable to parse json from " <> cacheFilePath)
+     (Right jv) -> return (takeBaseName cacheFilePath, jv)
+  
   values <- for (tc_deployContexts tcfg) $ \dc -> do
     let cacheFilePath = deployContextCacheFilePath tcfg dc
     lbs <- LBS.readFile cacheFilePath
     case JS.eitherDecode' lbs of
      (Left e) -> error ("Unable to parse json from " <> cacheFilePath)
      (Right jv) -> return (takeBaseName cacheFilePath, jv)
-  return (JS.Object (HM.fromList [(T.pack file,jv) | (file,jv) <- values]))
+  return (JS.Object (HM.fromList ([(T.pack file,jv) | (file,jv) <- values] ++ [(T.pack file,jv) | (file,jv) <- valuesx ]) ))
 
 expandTemplateFileToDest :: JS.Value -> FilePath -> FilePath -> IO ()
 expandTemplateFileToDest ctx templatePath destPath = do

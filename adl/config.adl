@@ -3,6 +3,8 @@ module config
 import types.FilePath;
 import types.S3Path;
 import types.EndPointLabel;
+import types.DeployConfigTopicName;
+import types.StringKeyMap;
 import sys.types.Map;
 import sys.types.Pair;
 import sys.types.Maybe;
@@ -23,7 +25,12 @@ struct ToolConfig {
     /// The storage location for release zip files
     BlobStoreConfig releases;
 
+    /// Config contexts (for non-dynmic config contexts) aka deployContexts
+    StringKeyMap<DeployConfigTopicName, ConfigContextSource> configContexts = {};
+
+    /// Original name deployContexts for backwards compatibility
     Vector<DeployContext> deployContexts = [];
+
     DeployMode deployMode = "noproxy";
 
     // Support for AWS health checks in proxy mode
@@ -43,10 +50,9 @@ union BlobStoreConfig {
    FilePath localdir;
 };
 
-
 struct ProxyModeConfig {
     /// The configured endpoints.
-    StringMap<EndPoint> endPoints;
+    StringKeyMap<EndPointLabel, EndPoint> endPoints;
 
     /// If set, we are in remote mode, with state stored at this S3 path
     Maybe<S3Path> remoteStateS3 = "nothing";
@@ -109,6 +115,7 @@ struct DeployContext
     DeployContextSource source;
 };
 
+/// Methods of providing text for a config context
 union DeployContextSource
 {
     // Context from a local file
@@ -120,6 +127,9 @@ union DeployContextSource
     /// Context from AWS secrets manager secret
     String awsSecretArn;
 };
+
+/// TODO: propagate name change to ConfigContextSource
+type ConfigContextSource = DeployContextSource;
 
 union Verbosity
 {
