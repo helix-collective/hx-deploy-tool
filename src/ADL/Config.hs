@@ -2,7 +2,6 @@
 module ADL.Config(
     BlobStoreConfig(..),
     ConfigContextSource(..),
-    DeployContext(..),
     DeployMode(..),
     EndPoint(..),
     EndPointType(..),
@@ -65,27 +64,6 @@ instance AdlValue ConfigContextSource where
         <|> parseUnionValue "s3" Ccs_s3
         <|> parseUnionValue "awsSecretArn" Ccs_awsSecretArn
         <|> parseFail "expected a ConfigContextSource"
-
-data DeployContext = DeployContext
-    { dc_name :: T.Text
-    , dc_source :: ConfigContextSource
-    }
-    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
-
-mkDeployContext :: T.Text -> ConfigContextSource -> DeployContext
-mkDeployContext name source = DeployContext name source
-
-instance AdlValue DeployContext where
-    atype _ = "config.DeployContext"
-    
-    jsonGen = genObject
-        [ genField "name" dc_name
-        , genField "source" dc_source
-        ]
-    
-    jsonParser = DeployContext
-        <$> parseField "name"
-        <*> parseField "source"
 
 data DeployMode
     = DeployMode_noproxy
@@ -297,15 +275,14 @@ data ToolConfig = ToolConfig
     , tc_autoCertName :: T.Text
     , tc_autoCertContactEmail :: T.Text
     , tc_releases :: BlobStoreConfig
-    , tc_configContexts :: (ADL.Types.StringKeyMap ADL.Types.DeployConfigTopicName ConfigContextSource)
-    , tc_deployContexts :: [DeployContext]
+    , tc_configContexts :: (ADL.Types.StringKeyMap ADL.Types.StaticConfigTopicName ConfigContextSource)
     , tc_deployMode :: DeployMode
     , tc_healthCheck :: (ADL.Sys.Types.Maybe HealthCheckConfig)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: BlobStoreConfig -> ToolConfig
-mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases (stringMapFromList []) [  ] DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
+mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases (stringMapFromList []) DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -320,7 +297,6 @@ instance AdlValue ToolConfig where
         , genField "autoCertContactEmail" tc_autoCertContactEmail
         , genField "releases" tc_releases
         , genField "configContexts" tc_configContexts
-        , genField "deployContexts" tc_deployContexts
         , genField "deployMode" tc_deployMode
         , genField "healthCheck" tc_healthCheck
         ]
@@ -335,7 +311,6 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
         <*> parseFieldDef "configContexts" (stringMapFromList [])
-        <*> parseFieldDef "deployContexts" [  ]
         <*> parseFieldDef "deployMode" DeployMode_noproxy
         <*> parseFieldDef "healthCheck" (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 

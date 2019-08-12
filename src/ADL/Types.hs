@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Types(
     ConfigTopicName,
-    DeployConfigTopicName,
     DeployLabel,
     EndPointLabel,
     FilePath,
     S3Path,
+    StaticConfigTopicName,
     StringKeyMap,
 ) where
 
@@ -20,8 +20,6 @@ import qualified Prelude
 
 type ConfigTopicName = T.Text
 
-type DeployConfigTopicName = ConfigTopicName
-
 type DeployLabel = T.Text
 
 type EndPointLabel = T.Text
@@ -29,5 +27,7 @@ type EndPointLabel = T.Text
 type FilePath = T.Text
 
 type S3Path = T.Text
+
+type StaticConfigTopicName = ConfigTopicName
 
 type StringKeyMap key value = StringMap (value)

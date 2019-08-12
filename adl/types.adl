@@ -16,6 +16,6 @@ type DeployLabel = String;
 type ConfigTopicName = String;
 
 /// Name of a topic as part of the static config contexts - eg 'infrastructure' 'secrets'
-type DeployConfigTopicName = ConfigTopicName;
+type StaticConfigTopicName = ConfigTopicName;
 
 };

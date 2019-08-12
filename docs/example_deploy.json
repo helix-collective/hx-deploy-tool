@@ -9,7 +9,7 @@
     "releases": {
       "s3": "s3://{S3 RELEASE BUCKET PATH}"
     },
-    "deployContexts": [],
+    "configContexts": {},
     "deployMode": {
       "proxy": {
         "endPoints": {

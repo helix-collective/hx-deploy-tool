@@ -38,8 +38,8 @@ main = do
     ["show-log"]                                -> runWithConfig       (C.showLog)
     ["show-default-nginx-config"]               -> C.showDefaultNginxConfig
 
-    ["fetch-context"]                           -> runWithConfigAndLog (U.fetchDeployContext Nothing)
-    ["fetch-context","--retry"]                 -> runWithConfigAndLog (U.fetchDeployContext (Just 10))
+    ["fetch-context"]                           -> runWithConfigAndLog (U.fetchConfigContext Nothing)
+    ["fetch-context","--retry"]                 -> runWithConfigAndLog (U.fetchConfigContext (Just 10))
     ["unpack", release, toDir]                  -> runWithConfigAndLog (U.unpackRelease id (T.pack release) toDir)
     ["expand-template", templatePath, destPath] -> runWithConfigAndLog (U.injectContext id templatePath destPath)
     ["aws-docker-login-cmd"]                    -> runWithConfigAndLog (C.awsDockerLoginCmd)

@@ -3,7 +3,7 @@ module config
 import types.FilePath;
 import types.S3Path;
 import types.EndPointLabel;
-import types.DeployConfigTopicName;
+import types.StaticConfigTopicName;
 import types.StringKeyMap;
 import sys.types.Map;
 import sys.types.Pair;
@@ -25,11 +25,8 @@ struct ToolConfig {
     /// The storage location for release zip files
     BlobStoreConfig releases;
 
-    /// Config contexts (for non-dynmic config contexts) aka deployContexts
-    StringKeyMap<DeployConfigTopicName, ConfigContextSource> configContexts = {};
-
-    /// Original name deployContexts for backwards compatibility
-    Vector<DeployContext> deployContexts = [];
+    /// Static Config contexts
+    StringKeyMap<StaticConfigTopicName, ConfigContextSource> configContexts = {};
 
     DeployMode deployMode = "noproxy";
 
@@ -107,12 +104,6 @@ union SslCertMode {
 struct SslCertPaths {
   FilePath sslCertificate;
   FilePath sslCertificateKey;
-};
-
-struct DeployContext
-{
-    String name;
-    ConfigContextSource source;
 };
 
 /// Methods of providing text for a config context

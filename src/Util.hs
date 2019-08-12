@@ -20,10 +20,10 @@ import qualified Blobs.Secrets as Secrets
 
 import qualified Control.Monad.Trans.AWS as AWS
 
-import ADL.Config(ToolConfig(..), DeployMode(..), DeployContext(..), ConfigContextSource(..), ProxyModeConfig(..))
+import ADL.Config(ToolConfig(..), DeployMode(..), ConfigContextSource(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile', runJsonParser, textFromParseContext, AdlValue(..), ParseResult(..))
-import ADL.Types(DeployConfigTopicName)
+import ADL.Types(StaticConfigTopicName)
 import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Codec.Archive.Zip(withArchive, unpackInto)
@@ -47,15 +47,12 @@ import System.Directory(listDirectory, doesFileExist, copyFile)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 
-deployContextCacheFilePath :: ToolConfig -> DeployContext -> FilePath
-deployContextCacheFilePath tcfg dc = T.unpack (tc_contextCache tcfg) </> T.unpack (dc_name dc) <> ".json"
-
-configContextCacheFilePath :: ToolConfig -> DeployConfigTopicName -> FilePath
+configContextCacheFilePath :: ToolConfig -> StaticConfigTopicName -> FilePath
 configContextCacheFilePath tcfg dctn = T.unpack (tc_contextCache tcfg) </> T.unpack dctn <> ".json"
 
 --- Download the infrastructure context files from the blobstore
-fetchDeployContext :: Maybe Int -> IOR ()
-fetchDeployContext retryAfter = do
+fetchConfigContext :: Maybe Int -> IOR ()
+fetchConfigContext retryAfter = do
   scopeInfo "Fetching deploy context from store" $ do
     tcfg <- getToolConfig
     awsEnvFn <- S3.mkAwsEnvFn
@@ -72,15 +69,6 @@ fetchDeployContext retryAfter = do
 
         info ("Downloading " <> T.pack cacheFilePath <> " from " <> dcLabel dcs)
         dcFetchToFile awsEnvFn dcs cacheFilePath
-
-      for_ (tc_deployContexts tcfg) $ \dc -> do
-        let cacheFilePath = deployContextCacheFilePath tcfg dc
-        case retryAfter of
-          Nothing -> return ()
-          Just delay -> await awsEnvFn (dc_source dc) delay
-
-        info ("Downloading " <> T.pack cacheFilePath <> " from " <> dcLabel (dc_source dc))
-        dcFetchToFile awsEnvFn (dc_source dc) cacheFilePath
  where
    await :: IOR AWS.Env -> ConfigContextSource -> Int -> IOR ()
    await awsEnvFn dc delaySecs = do
@@ -170,7 +158,7 @@ loadMergedContext :: ToolConfig -> IO JS.Value
 loadMergedContext tcfg = do
   let cacheDir = T.unpack (tc_contextCache tcfg)
 
-  valuesx <- for (M.toList (SM.toMap (tc_configContexts tcfg))) $ \dctn_dcs -> do
+  values <- for (M.toList (SM.toMap (tc_configContexts tcfg))) $ \dctn_dcs -> do
     let dctn = fst dctn_dcs
     let dcs = snd dctn_dcs
     let cacheFilePath = configContextCacheFilePath tcfg dctn
@@ -178,14 +166,8 @@ loadMergedContext tcfg = do
     case JS.eitherDecode' lbs of
      (Left e) -> error ("Unable to parse json from " <> cacheFilePath)
      (Right jv) -> return (takeBaseName cacheFilePath, jv)
-  
-  values <- for (tc_deployContexts tcfg) $ \dc -> do
-    let cacheFilePath = deployContextCacheFilePath tcfg dc
-    lbs <- LBS.readFile cacheFilePath
-    case JS.eitherDecode' lbs of
-     (Left e) -> error ("Unable to parse json from " <> cacheFilePath)
-     (Right jv) -> return (takeBaseName cacheFilePath, jv)
-  return (JS.Object (HM.fromList ([(T.pack file,jv) | (file,jv) <- values] ++ [(T.pack file,jv) | (file,jv) <- valuesx ]) ))
+
+  return (JS.Object (HM.fromList ([(T.pack file,jv) | (file,jv) <- values]) ))
 
 expandTemplateFileToDest :: JS.Value -> FilePath -> FilePath -> IO ()
 expandTemplateFileToDest ctx templatePath destPath = do
