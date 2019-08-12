@@ -1,9 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     BlobStoreConfig(..),
-    ConfigContextSource,
+    ConfigContextSource(..),
     DeployContext(..),
-    DeployContextSource(..),
     DeployMode(..),
     EndPoint(..),
     EndPointType(..),
@@ -46,15 +45,34 @@ instance AdlValue BlobStoreConfig where
         <|> parseUnionValue "localdir" BlobStoreConfig_localdir
         <|> parseFail "expected a BlobStoreConfig"
 
-type ConfigContextSource = DeployContextSource
+data ConfigContextSource
+    = Ccs_file ADL.Types.FilePath
+    | Ccs_s3 ADL.Types.S3Path
+    | Ccs_awsSecretArn T.Text
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue ConfigContextSource where
+    atype _ = "config.ConfigContextSource"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        Ccs_file v -> genUnionValue "file" v
+        Ccs_s3 v -> genUnionValue "s3" v
+        Ccs_awsSecretArn v -> genUnionValue "awsSecretArn" v
+        )
+    
+    jsonParser
+        =   parseUnionValue "file" Ccs_file
+        <|> parseUnionValue "s3" Ccs_s3
+        <|> parseUnionValue "awsSecretArn" Ccs_awsSecretArn
+        <|> parseFail "expected a ConfigContextSource"
 
 data DeployContext = DeployContext
     { dc_name :: T.Text
-    , dc_source :: DeployContextSource
+    , dc_source :: ConfigContextSource
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkDeployContext :: T.Text -> DeployContextSource -> DeployContext
+mkDeployContext :: T.Text -> ConfigContextSource -> DeployContext
 mkDeployContext name source = DeployContext name source
 
 instance AdlValue DeployContext where
@@ -68,27 +86,6 @@ instance AdlValue DeployContext where
     jsonParser = DeployContext
         <$> parseField "name"
         <*> parseField "source"
-
-data DeployContextSource
-    = Dcs_file ADL.Types.FilePath
-    | Dcs_s3 ADL.Types.S3Path
-    | Dcs_awsSecretArn T.Text
-    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
-
-instance AdlValue DeployContextSource where
-    atype _ = "config.DeployContextSource"
-    
-    jsonGen = genUnion (\jv -> case jv of
-        Dcs_file v -> genUnionValue "file" v
-        Dcs_s3 v -> genUnionValue "s3" v
-        Dcs_awsSecretArn v -> genUnionValue "awsSecretArn" v
-        )
-    
-    jsonParser
-        =   parseUnionValue "file" Dcs_file
-        <|> parseUnionValue "s3" Dcs_s3
-        <|> parseUnionValue "awsSecretArn" Dcs_awsSecretArn
-        <|> parseFail "expected a DeployContextSource"
 
 data DeployMode
     = DeployMode_noproxy

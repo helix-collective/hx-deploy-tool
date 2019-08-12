@@ -20,7 +20,7 @@ import qualified Blobs.Secrets as Secrets
 
 import qualified Control.Monad.Trans.AWS as AWS
 
-import ADL.Config(ToolConfig(..), DeployMode(..), DeployContext(..), DeployContextSource(..), ProxyModeConfig(..))
+import ADL.Config(ToolConfig(..), DeployMode(..), DeployContext(..), ConfigContextSource(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile', runJsonParser, textFromParseContext, AdlValue(..), ParseResult(..))
 import ADL.Types(DeployConfigTopicName)
@@ -82,7 +82,7 @@ fetchDeployContext retryAfter = do
         info ("Downloading " <> T.pack cacheFilePath <> " from " <> dcLabel (dc_source dc))
         dcFetchToFile awsEnvFn (dc_source dc) cacheFilePath
  where
-   await :: IOR AWS.Env -> DeployContextSource -> Int -> IOR ()
+   await :: IOR AWS.Env -> ConfigContextSource -> Int -> IOR ()
    await awsEnvFn dc delaySecs = do
      exists <- dcExists awsEnvFn dc
      case exists of
@@ -92,30 +92,30 @@ fetchDeployContext retryAfter = do
          liftIO $ threadDelay (1000000 * delaySecs)
          await awsEnvFn dc delaySecs
 
-   dcLabel :: DeployContextSource -> T.Text
-   dcLabel (Dcs_file file) = file
-   dcLabel (Dcs_s3 s3Path) = s3Path
-   dcLabel (Dcs_awsSecretArn arn) = "AWS secret " <> arn
+   dcLabel :: ConfigContextSource -> T.Text
+   dcLabel (Ccs_file file) = file
+   dcLabel (Ccs_s3 s3Path) = s3Path
+   dcLabel (Ccs_awsSecretArn arn) = "AWS secret " <> arn
 
-   dcExists :: IOR AWS.Env -> DeployContextSource -> IOR Bool
-   dcExists _ (Dcs_file file) = do
+   dcExists :: IOR AWS.Env -> ConfigContextSource -> IOR Bool
+   dcExists _ (Ccs_file file) = do
      liftIO $ doesFileExist (T.unpack file)
-   dcExists awsEnvFn (Dcs_s3 s3Path) = do
+   dcExists awsEnvFn (Ccs_s3 s3Path) = do
      env <- awsEnvFn
      let (bucket,key)  = S3.splitPath s3Path
      liftIO $ S3.fileExists env bucket key
-   dcExists awsEnvFn (Dcs_awsSecretArn arn) = do
+   dcExists awsEnvFn (Ccs_awsSecretArn arn) = do
      env <- awsEnvFn
      liftIO $ Secrets.secretExists env arn
 
-   dcFetchToFile :: IOR AWS.Env -> DeployContextSource -> FilePath -> IOR ()
-   dcFetchToFile _ (Dcs_file fromFile) toFile = do
+   dcFetchToFile :: IOR AWS.Env -> ConfigContextSource -> FilePath -> IOR ()
+   dcFetchToFile _ (Ccs_file fromFile) toFile = do
      liftIO $ copyFile (T.unpack fromFile) toFile
-   dcFetchToFile awsEnvFn (Dcs_s3 s3Path) toFile =  do
+   dcFetchToFile awsEnvFn (Ccs_s3 s3Path) toFile =  do
      env <- awsEnvFn
      let (bucket,key)  = S3.splitPath s3Path
      liftIO $ S3.downloadFileFrom env bucket key toFile Nothing
-   dcFetchToFile awsEnvFn (Dcs_awsSecretArn arn) toFile = do
+   dcFetchToFile awsEnvFn (Ccs_awsSecretArn arn) toFile = do
      env <- awsEnvFn
      liftIO $ Secrets.downloadSecretFrom env arn toFile
 

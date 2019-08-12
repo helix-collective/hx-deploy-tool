@@ -112,11 +112,11 @@ struct SslCertPaths {
 struct DeployContext
 {
     String name;
-    DeployContextSource source;
+    ConfigContextSource source;
 };
 
 /// Methods of providing text for a config context
-union DeployContextSource
+union ConfigContextSource
 {
     // Context from a local file
     FilePath file;
@@ -127,9 +127,6 @@ union DeployContextSource
     /// Context from AWS secrets manager secret
     String awsSecretArn;
 };
-
-/// TODO: propagate name change to ConfigContextSource
-type ConfigContextSource = DeployContextSource;
 
 union Verbosity
 {
