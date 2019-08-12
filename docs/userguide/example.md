@@ -17,6 +17,14 @@ In the latest release package, you will find several usefull files to help you g
 - release.json - include this file in your release archive, it will tell hx-deploy-tool how to deploy your release.
 - a couple of other files, but lets set them aside until we do a proxy deploy.
 
+We will be assuming that your simple deployment requires `docker-compose up` to be executed.
+This means that you need to have docker-compose installed on your machine, and that it needs access to whichever docker repository your image is stored in.
+
+You will also need a location to store your release archives, your logs, and a location where the releases will be unpacked.
+Make sure all the locations have the neccesary rights (and exist), and specify them in the config file.
+
+## 1.3. Prepare the configuration files
+
 For our simple deployment, our release archive will include the following docker-compose.yml:
 
 ```
@@ -46,9 +54,7 @@ You can create test2.zip if you want to test having multiple release versions.
 Put them in a folder where you would expect your releases.
 We will be going with `/tmp/releases`
 
-Also make sure to grant the necessary permissions to the locations where the release will be unpacked, and the logs will be written to. These locations are defined in hx-deploy-tool.json.
-
-Our sample hx-deploy-tool.json looks like this:
+All the location and deployment parameters are defined in hx-deploy-tool.json, and for our example, looks like this:
 
 ```
 {
@@ -61,13 +67,36 @@ Our sample hx-deploy-tool.json looks like this:
 }
 ```
 
-We will be assuming that your simple deployment requires `docker-compose up` to be executed.
-This means that you need to have docker-compose installed on your machine, and that it needs access to whichever docker repository your image is stored in.
+The sample [hx-deploy-tool.json](https://github.com/helix-collective/hx-deploy-tool/blob/master/docs/templates/example_deploy.json) that is included in the hx-deploy-tool release has descriptive values, or you can read more about using it [here]()
 
-... configure environment add file folders etc.
-... make sure docker is installed, image is ready.
-... rights to run docker-compose
-... access to s3.
+Copy the executable binary that you downloaded as part of the latest release to a suitable folder for execution.
+
+The configuration file is expected at ../etc/hx-deploy-tool.json, releative to where you place the binary. You specify an alternate location and name for this file using a `HX_DEPLOY_CONFIG' environment variable.
+
+## Deploy our test
+
+Let's make sure hx-deploy-tool can find our releases, run './hx-deploy-tool list-releases'
+You should see the release archives listed, in our case, we have 2:
+
+```
+test2.zip
+test1.zip
+```
+
+Now simply starting a release will unpack it, and execute the pre-start, stop, and start commands listed in your release.
+If you are using our example configurations, './hx-deploy-tool start test1.zip` should do all that. The hello world docker image will print it's hello world message on your screen:
+
+```
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+```
+You can stop the release by running './hx-deploy-tool stop test1.zip`
+
+**Congratulations, you've completed a deployment with hx-deploy-tool!!!**
+
+# Deploy with a Proxy
+
+
 
 ---
 
