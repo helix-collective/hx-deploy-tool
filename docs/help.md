@@ -57,7 +57,7 @@ running indefinitely.
 # Deployments without a proxy
 The following subcommands are used to manage proxyless deployments:
 
-## hx-deploy-tool select <release>
+## hx-deploy-tool start <release>
 The command combines all of the necessary functions to replace
 any existing running release with the specified release.
 Specifically it:
@@ -99,7 +99,7 @@ to permit access to configured ECR repositories. This command is
 typically run on first boot.
 
 ## hx-deploy-tool show-log
-Show the history of releases deployed via the select command.
+Show the history of releases deployed via the start command.
 
 ## hx-deploy-tool show-default-nginx-config
 Outputs the default template for the nginx config.

@@ -140,7 +140,7 @@ usageText = "\
   \  hx-deploy-tool disconnect <endpoint>\n\
   \\n\
   \Deployment without a proxy:\n\
-  \  hx-deploy-tool select <release>\n\
+  \  hx-deploy-tool start <release>\n\
   \\n\
   \Plumbing/Low Level Operations:\n\
   \  hx-deploy-tool fetch-context [--retry]\n\
