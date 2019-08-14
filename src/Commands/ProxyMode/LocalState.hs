@@ -32,7 +32,7 @@ import Control.Monad(when)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
 import Data.FileEmbed(embedFile)
-import Data.List(find)
+import Data.List(find, partition,elem)
 import Data.Maybe(catMaybes)
 import Data.Foldable(for_)
 import Data.Monoid
@@ -77,11 +77,21 @@ updateState newStateFn = do
 -- | Compute the difference between oldState and newState, and express this as a list
 -- of actions to update the old state
 stateUpdateActions :: M.Map EndPointLabel EndPoint -> State -> State -> [StateAction]
-stateUpdateActions endPointMap oldState newState
-  =  map CreateDeploy deploysToCreate
+stateUpdateActions endPointMap oldState newState =
+  -- First shut down deploys that occupy ports that we need for new deploys
+     map DestroyDeploy deploysToDestroyFirst
+
+  -- create all new endpoints
+  <> map CreateDeploy deploysToCreate
+
+  -- update any deploys that have changed
   <> concatMap updateDeploy deploysToUpdate
+
+  -- Setup the endpoints (ie the nginx config?) if any have changed
   <> if newEndPoints /= oldEndPoints then [SetEndPoints newEndPoints] else []
-  <> map DestroyDeploy deploysToDestroy
+
+  -- Finally, delete the remainind endpoints that are no longer required
+  <> map DestroyDeploy deploysToDestroyLast
   where
     oldDeploys = SM.toMap (s_deploys oldState)
     newDeploys = SM.toMap (s_deploys newState)
@@ -89,8 +99,10 @@ stateUpdateActions endPointMap oldState newState
     newEndPoints = (catMaybes . map (getEndpointDeploy endPointMap newState) . SM.toList) (s_connections newState)
     deploysToCreate = M.elems (M.difference newDeploys oldDeploys)
     deploysToUpdate = filter (\(d1,d2) -> d1 /= d2) (M.elems (M.intersectionWith (\d1 d2 -> (d1,d2)) oldDeploys newDeploys))
-    deploysToDestroy = M.elems (M.difference oldDeploys newDeploys)
+    (deploysToDestroyFirst,deploysToDestroyLast) = partition usesRequiredPort (M.elems (M.difference oldDeploys newDeploys))
     updateDeploy (d1,d2) = [DestroyDeploy d1, CreateDeploy d2]
+    usesRequiredPort d = elem (d_port d) requiredPorts
+    requiredPorts =map d_port (M.elems newDeploys)
 
 getEndpointDeploy :: M.Map EndPointLabel EndPoint -> State -> (EndPointLabel,DeployLabel) -> Maybe (EndPoint,Deploy)
 getEndpointDeploy endPointMap state (eplabel, dlabel) = do
