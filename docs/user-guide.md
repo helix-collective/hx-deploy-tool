@@ -14,17 +14,19 @@ It pulls config and release zip files from various sources (eg. local or S3), un
 
 ## Why use hx-deploy-tool
 
-There is a gap between running software on a single server, and having large container clusters and using various tools for container orhestration. This tool plugs that gap, and can provide consistency and reliability in deployments until you have grown to a place where you need what container orchestration tools provide.
-similar to helm or rancher, 
-manages containerised deploys for a single application on a substrate of bare ec2 machines.
+You have a single application or service, and when deploying, need to orcestrate various actions, such as deploying the containers to a single or multiple servers, setting up reverse proxies, managing associating certificates, making sure all the containers are the same version of the application, making sure the logs get ingested etc. etc.
 
-single application, not a diverse set of applications.
+hx-deploy-tool provides a reliable way to deploy all those pieces, and ensure state and version is managed at the same tme.
+
+There is a gap between running software on a single server, and having large container clusters and using various tools for container orhestration. This tool plugs that gap, and can provide consistency and reliability in deployments until you have grown to a place where you need what container orchestration tools provide.
+
 
 ## When to consider using another tool
-if you need load balancing and service distribution to manage multiple applications across multiple servers,
-If you are looking for a single tool to manage deployment, scaling, orchestration, load balancing... and more, it sounds like you ay benefit from using one of the many orchestration tools available.
+
+You have a plethora of applcations and microservices, for which you need to manage , deployment, scaling (per service/application), orchestration, load balancing and service distribution across multiple servers,
+it sounds like you ay benefit from using one of the many orchestration tools available.
 //todo, insert more.
- individually scaling microservices containers
+
 ---
 
 - [Index](https://helix-collective.github.io/hx-deploy-tool/)
