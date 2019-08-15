@@ -1,5 +1,7 @@
 # hx-deploy-tool
 
+[Userguide](https://helix-collective.github.io/hx-deploy-tool/)
+
 A small tool to automate the annoying bits of deployment, making it more likely engineers do deployments right(tm)
 and make deployments a joy. Can work atop docker or 'bare metal'. It pulls config and release zip files from
 various sources (eg. S3), unpacks into versioned directories, and runs commands to start, stop, and expose
@@ -63,4 +65,4 @@ It defaults to ../etc/hx-deploy-tool.json (relative to the executable).
 
 - [Installation and configuration](docs/installation.md)
 - [Usage](docs/help.md)
-
+- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/)
