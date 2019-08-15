@@ -23,7 +23,7 @@ struct ToolConfig {
     /// The storage location for release zip files
     BlobStoreConfig releases;
 
-    Vector<DeployContext> deployContexts;
+    Vector<DeployContext> deployContexts = [];
     DeployMode deployMode = "noproxy";
 
     // Support for AWS health checks in proxy mode
