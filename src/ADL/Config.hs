@@ -304,8 +304,8 @@ data ToolConfig = ToolConfig
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkToolConfig :: BlobStoreConfig -> [DeployContext] -> ToolConfig
-mkToolConfig releases deployContexts = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases deployContexts DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
+mkToolConfig :: BlobStoreConfig -> ToolConfig
+mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases [  ] DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -333,7 +333,7 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "autoCertName" "hxdeploytoolcert"
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
-        <*> parseField "deployContexts"
+        <*> parseFieldDef "deployContexts" [  ]
         <*> parseFieldDef "deployMode" DeployMode_noproxy
         <*> parseFieldDef "healthCheck" (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
