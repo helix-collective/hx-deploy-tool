@@ -14,6 +14,7 @@ It pulls config and release zip files from various sources (eg. local or S3), un
 
 ## Why use hx-deploy-tool
 
+You've decided that you want finer control over your environment than running it in an aplication or function PAAS, and you need to manage your deployments.
 You have a single application or service, and when deploying, need to orcestrate various actions, such as deploying the containers to a single or multiple servers, setting up reverse proxies, managing associating certificates, making sure all the containers are the same version of the application, making sure the logs get ingested etc. etc.
 
 hx-deploy-tool provides a reliable way to deploy all those pieces, and ensure state and version is managed at the same time. It encapsulates all the steps of a deployment, without the need to write script after script. Simply create a docker-compose file, and a couple of moustache templates, and suddently with hx-deploy tool, your deployments are consistent, repeatable, reproducable and highly configureable. On top of that, you can run the tool in slave mode, and it will monitor a blob store for the latest state, and ensure the server it is running on, is in that state (release version, configuration etc.)
@@ -23,7 +24,7 @@ There is a gap between running software on a single server, and having large con
 
 ## When to consider using another tool
 
-You have a plethora of applcations and microservices, for which you need to manage , deployment, scaling (per service/application and independent of), orchestration, load balancing and service distribution across multiple servers,
+You have a plethora of applcations and microservices, for which you need to manage , deployment, scaling (per service/application and/or per server independent of each other), orchestration, load balancing and service distribution across multiple servers,
 it sounds like you may benefit from using one of the many orchestration tools available.
 
 
