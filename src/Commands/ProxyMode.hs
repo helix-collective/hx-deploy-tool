@@ -5,9 +5,10 @@ module Commands.ProxyMode(
   stopAndRemove,
   connect,
   disconnect,
+  slaveFlush,
   slaveUpdate,
   restartProxy,
-  generateSslCertificate
+  generateSslCertificate,
   ) where
 
 import qualified ADL.Core.StringMap as SM
@@ -30,7 +31,7 @@ import ADL.Types(EndPointLabel, DeployLabel)
 import Util(unpackRelease,fetchDeployContext, checkReleaseExists)
 import Commands.ProxyMode.Types
 import Commands.ProxyMode.LocalState(localState, restartLocalProxy, generateLocalSslCertificate)
-import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path)
+import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path, flushSlaveStates)
 import Control.Concurrent(threadDelay)
 import Control.Exception(SomeException)
 import Control.Monad.Catch(catch)
@@ -54,12 +55,14 @@ showStatus showSlaves = do
   pm <- getProxyModeConfig
   state <- getState
   liftIO $ printState pm state
-  slaveStates <- getSlaveStates
-  when showSlaves $
+  when showSlaves $ do
+    slaveStates <- getSlaveStates
     liftIO $ for_ slaveStates $ \(label,slaveState) -> do
       T.putStrLn "----------------------------------------------------------------------"
       T.putStrLn ("Slave: " <> label)
-      printState pm slaveState
+      for_ (ss_lastModified slaveState) $ \lm ->
+         T.putStrLn ("Updated: " <> (T.pack (show lm)))
+      printState pm (ss_state slaveState)
   where
     printState pm state = do
       T.putStrLn "Endpoints:"
@@ -161,6 +164,17 @@ slaveUpdate_ = do
     label <- getSlaveLabel
     writeSlaveState remoteStateS3 label state
 
+-- Flash slave state from S3 that is more than 5 minutes old
+slaveFlush :: IOR ()
+slaveFlush = do
+  pm <- getProxyModeConfig
+  slaveStates <- getSlaveStates
+  now <- liftIO $ getCurrentTime
+  let notUpdatedSince = addUTCTime (fromIntegral (-300)) now
+  for_ (pm_remoteStateS3 pm) $ \s3Path -> do
+    flushSlaveStates notUpdatedSince s3Path
+    return ()
+
 -- | Allocate an open port in the configured range
 allocatePort :: ProxyModeConfig -> State -> IO Word32
 allocatePort pm state = case S.lookupMin ports of
@@ -177,7 +191,7 @@ getState = do
     Nothing -> sa_get localState
     (Just s3Path) -> sa_get (remoteState s3Path)
 
-getSlaveStates :: IOR [(T.Text, State)]
+getSlaveStates :: IOR [(T.Text, SlaveState)]
 getSlaveStates = do
   pm <- getProxyModeConfig
   case pm_remoteStateS3 pm of

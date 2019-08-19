@@ -5,6 +5,7 @@ module Blobs.S3(
   downloadFileFrom,
   listFiles,
   extendObjectKey,
+  deleteFile,
   mkAwsEnv,
   mkAwsEnvFn
   ) where
@@ -95,6 +96,17 @@ downloadFileFrom env bucketName  objectKey toFilePath retryAfter = do
         (Just delaySecs) -> do
           threadDelay (1000000 * delaySecs)
           downloadFileFrom env bucketName objectKey toFilePath retryAfter
+
+deleteFile :: Env -> S3.BucketName -> S3.ObjectKey -> IO ()
+deleteFile env bucketName objectKey = do
+  handling _ServiceError onServiceError $ do
+    runResourceT . runAWST env $ do
+      send (S3.deleteObject bucketName objectKey)
+      return ()
+  where
+    onServiceError :: ServiceError -> IO ()
+    onServiceError se | view serviceStatus se == notFound404 = return ()
+                      | otherwise                            = throwing _ServiceError se
 
 listFiles :: Env -> S3.BucketName -> S3.ObjectKey -> IO [T.Text]
 listFiles env bucketName (S3.ObjectKey prefix) = do
