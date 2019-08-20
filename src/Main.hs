@@ -19,9 +19,10 @@ import Control.Monad.Reader(runReaderT)
 import Data.Monoid
 import HelpText(helpText)
 import Commands.ProxyMode.LocalState(nginxConfTemplate)
+import System.Directory(doesFileExist)
 import System.Environment(getArgs, lookupEnv, getExecutablePath)
 import System.Exit(exitWith,ExitCode(..))
-import System.FilePath(takeDirectory, (</>))
+import System.FilePath(takeDirectory, takeExtension, (</>))
 import System.Posix.Files(fileExist)
 import Types(REnv(..),IOR, getToolConfig)
 import Data.Version(showVersion)
@@ -106,23 +107,38 @@ runWithConfigAndLog ma = do
     ehandler logger e = L.error logger ("Exception: " <> LT.pack (show (e::SomeException)))
 
 loadToolConfig :: IO ToolConfig
-loadToolConfig = getConfig "HX_DEPLOY_CONFIG" "etc/hx-deploy-tool.json"
+loadToolConfig = getConfig "HX_DEPLOY_CONFIG" ["etc/hx-deploy-tool.json", "etc/hx-deploy-tool.yaml"]
 
 getLetsEncryptConfig :: IO LetsEncryptConfig
-getLetsEncryptConfig = getConfig "HX_LETSENCRYPT_CONFIG" "etc/letsencrypt-aws.json"
+getLetsEncryptConfig = getConfig "HX_LETSENCRYPT_CONFIG" ["etc/letsencrypt-aws.json"]
 
 -- fetch an ADL config file, either from the path in the
 -- given environment variable, or from a prefix relative
 -- default path.
-getConfig :: (AdlValue a) => String -> FilePath -> IO a
-getConfig envVarName pathFromPrefix = do
+getConfig :: (AdlValue a) => String -> [FilePath] -> IO a
+getConfig envVarName prefixPaths = do
   mEnvPath <- lookupEnv envVarName
-  configPath <- case mEnvPath of
-   (Just configPath) -> return configPath
+  configPaths <- case mEnvPath of
+   (Just configPath) -> return [configPath]
    Nothing -> do
      exePath <- getExecutablePath
-     return (takeDirectory (takeDirectory exePath) </> pathFromPrefix )
-  adlFromJsonFile' configPath
+     let prefix = takeDirectory (takeDirectory exePath)
+     return [prefix </> path | path <- prefixPaths]
+  configPath <- findFirstExisting configPaths
+  case takeExtension configPath of
+    ".json" -> adlFromJsonFile' configPath
+    ".yaml" -> U.adlFromYamlFile' configPath
+    _ -> error ("Unknown file type for config file: " <> configPath)
+  where
+    findFirstExisting configPaths = find1 configPaths
+      where
+        find1 [] = error ("Config file not found, tried: " <> show configPaths)
+        find1 (p:ps) = do
+          exists <- doesFileExist p
+          if exists
+            then return p
+            else find1 ps
+
 
 usageText :: T.Text
 usageText = "\
@@ -154,5 +170,5 @@ usageText = "\
   \  hx-deploy-tool slave-update [--repeat n]\n\
   \\n\
   \The config file is read from the file specified with HX_DEPLOY_CONFIG.\n\
-  \It defaults to ../etc/hx-deploy-tool.json (relative to the executable).\n\
+  \It defaults to ../etc/hx-deploy-tool.(json|yaml) relative to the executable.\n\
   \"

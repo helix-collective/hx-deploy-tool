@@ -56,7 +56,7 @@ Plumbing/Low Level Operations:
   hx-deploy-tool slave-update [--repeat n]
 
 The config file is read from the file specified with HX_DEPLOY_CONFIG.
-It defaults to ../etc/hx-deploy-tool.json (relative to the executable).
+It defaults to ../etc/hx-deploy-tool.(json|yaml) relative to the executable.
 ```
 
 # Additional Information
