@@ -3,7 +3,7 @@ module config
 import types.FilePath;
 import types.S3Path;
 import types.EndPointLabel;
-import types.StaticConfigTopicName;
+import types.StaticConfigName;
 import types.StringKeyMap;
 import sys.types.Map;
 import sys.types.Pair;
@@ -26,7 +26,7 @@ struct ToolConfig {
     BlobStoreConfig releases;
 
     /// Static Config contexts
-    StringKeyMap<StaticConfigTopicName, ConfigContextSource> configContexts = {};
+    StringKeyMap<StaticConfigName, JsonSource> configSources = {};
 
     DeployMode deployMode = "noproxy";
 
@@ -107,7 +107,7 @@ struct SslCertPaths {
 };
 
 /// Methods of providing text for a config context
-union ConfigContextSource
+union JsonSource
 {
     // Context from a local file
     FilePath file;

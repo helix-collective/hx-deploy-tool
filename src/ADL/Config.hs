@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     BlobStoreConfig(..),
-    ConfigContextSource(..),
     DeployMode(..),
     EndPoint(..),
     EndPointType(..),
     HealthCheckConfig(..),
+    JsonSource(..),
     LetsEncryptConfig(..),
     MachineLabel(..),
     ProxyModeConfig(..),
@@ -43,27 +43,6 @@ instance AdlValue BlobStoreConfig where
         =   parseUnionValue "s3" BlobStoreConfig_s3
         <|> parseUnionValue "localdir" BlobStoreConfig_localdir
         <|> parseFail "expected a BlobStoreConfig"
-
-data ConfigContextSource
-    = Ccs_file ADL.Types.FilePath
-    | Ccs_s3 ADL.Types.S3Path
-    | Ccs_awsSecretArn T.Text
-    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
-
-instance AdlValue ConfigContextSource where
-    atype _ = "config.ConfigContextSource"
-    
-    jsonGen = genUnion (\jv -> case jv of
-        Ccs_file v -> genUnionValue "file" v
-        Ccs_s3 v -> genUnionValue "s3" v
-        Ccs_awsSecretArn v -> genUnionValue "awsSecretArn" v
-        )
-    
-    jsonParser
-        =   parseUnionValue "file" Ccs_file
-        <|> parseUnionValue "s3" Ccs_s3
-        <|> parseUnionValue "awsSecretArn" Ccs_awsSecretArn
-        <|> parseFail "expected a ConfigContextSource"
 
 data DeployMode
     = DeployMode_noproxy
@@ -145,6 +124,27 @@ instance AdlValue HealthCheckConfig where
     jsonParser = HealthCheckConfig
         <$> parseField "incomingPath"
         <*> parseField "outgoingPath"
+
+data JsonSource
+    = Jsrc_file ADL.Types.FilePath
+    | Jsrc_s3 ADL.Types.S3Path
+    | Jsrc_awsSecretArn T.Text
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue JsonSource where
+    atype _ = "config.JsonSource"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        Jsrc_file v -> genUnionValue "file" v
+        Jsrc_s3 v -> genUnionValue "s3" v
+        Jsrc_awsSecretArn v -> genUnionValue "awsSecretArn" v
+        )
+    
+    jsonParser
+        =   parseUnionValue "file" Jsrc_file
+        <|> parseUnionValue "s3" Jsrc_s3
+        <|> parseUnionValue "awsSecretArn" Jsrc_awsSecretArn
+        <|> parseFail "expected a JsonSource"
 
 data LetsEncryptConfig = LetsEncryptConfig
     { lec_certbotPath :: T.Text
@@ -275,7 +275,7 @@ data ToolConfig = ToolConfig
     , tc_autoCertName :: T.Text
     , tc_autoCertContactEmail :: T.Text
     , tc_releases :: BlobStoreConfig
-    , tc_configContexts :: (ADL.Types.StringKeyMap ADL.Types.StaticConfigTopicName ConfigContextSource)
+    , tc_configSources :: (ADL.Types.StringKeyMap ADL.Types.StaticConfigName JsonSource)
     , tc_deployMode :: DeployMode
     , tc_healthCheck :: (ADL.Sys.Types.Maybe HealthCheckConfig)
     }
@@ -296,7 +296,7 @@ instance AdlValue ToolConfig where
         , genField "autoCertName" tc_autoCertName
         , genField "autoCertContactEmail" tc_autoCertContactEmail
         , genField "releases" tc_releases
-        , genField "configContexts" tc_configContexts
+        , genField "configSources" tc_configSources
         , genField "deployMode" tc_deployMode
         , genField "healthCheck" tc_healthCheck
         ]
@@ -310,7 +310,7 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "autoCertName" "hxdeploytoolcert"
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
-        <*> parseFieldDef "configContexts" (stringMapFromList [])
+        <*> parseFieldDef "configSources" (stringMapFromList [])
         <*> parseFieldDef "deployMode" DeployMode_noproxy
         <*> parseFieldDef "healthCheck" (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 

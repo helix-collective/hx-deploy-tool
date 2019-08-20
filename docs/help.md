@@ -89,7 +89,7 @@ Shows the release archives available in S3, most recent first.
 Unpack and configure the specified release into the given directory.
 
 ## hx-deploy-tool expand-template <templatePath> <destPath>
-Injects the config contexts specified in `configContexts` into a template
+Injects the config contexts specified in `configSources` into a template
 found at `templatePath` and saves the resulting file to `destPath`
 
 ## hx-deploy-tool aws-docker-login-cmd

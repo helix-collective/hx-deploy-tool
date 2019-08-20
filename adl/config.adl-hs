@@ -2,7 +2,7 @@ module config
 {
 import adlc.config.haskell.HaskellFieldPrefix;
 
-annotation ConfigContextSource HaskellFieldPrefix "ccs_";
+annotation JsonSource HaskellFieldPrefix "jsrc_";
 
 annotation EndPoint HaskellFieldPrefix "ep_";
 annotation EndPointType HaskellFieldPrefix "ep_";
