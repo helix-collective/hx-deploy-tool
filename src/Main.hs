@@ -5,14 +5,16 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as LT;
 import qualified Data.ByteString.Char8 as CBS
+import qualified Data.ByteString.Lazy as LBS
 import qualified Commands.LetsEncrypt as LE
 import qualified Commands.ProxyMode as P
 import qualified Commands as C
 import qualified Util as U
 import qualified Log as L
+import qualified Blobs.S3 as S3
 
 import ADL.Config(ToolConfig(..), LetsEncryptConfig(..), DeployMode(..))
-import ADL.Core(adlFromJsonFile', AdlValue)
+import ADL.Core(adlFromByteString, AdlValue)
 import Control.Exception(SomeException)
 import Control.Monad.Catch(finally,catch)
 import Control.Monad.Reader(runReaderT)
@@ -124,21 +126,29 @@ getConfig envVarName prefixPaths = do
      exePath <- getExecutablePath
      let prefix = takeDirectory (takeDirectory exePath)
      return [prefix </> path | path <- prefixPaths]
-  configPath <- findFirstExisting configPaths
-  case takeExtension configPath of
-    ".json" -> adlFromJsonFile' configPath
-    ".yaml" -> U.adlFromYamlFile' configPath
-    _ -> error ("Unknown file type for config file: " <> configPath <> " (expected .json or .yaml)")
+  getAwsEnv <- S3.mkAwsEnvFn0
+  mContent <- readFirst getAwsEnv configPaths
+  case mContent of
+    Nothing -> error ("Config file not found, tried: " <> show configPaths)
+    (Just (configPath, lbs)) -> do
+      let pr = parseContent configPath lbs
+          from = "from " <> T.pack configPath
+      case U.decodeAdlParseResult from pr of
+        (Left err) -> error (T.unpack err)
+        (Right a) -> return a
   where
-    findFirstExisting configPaths = find1 configPaths
-      where
-        find1 [] = error ("Config file not found, tried: " <> show configPaths)
-        find1 (p:ps) = do
-          exists <- doesFileExist p
-          if exists
-            then return p
-            else find1 ps
+    readFirst :: IO S3.AwsEnv -> [FilePath] -> IO (Maybe (FilePath, LBS.ByteString))
+    readFirst getAwsEnv [] = return Nothing
+    readFirst getAwsEnv (path:paths) = do
+      mlbs <- U.readFileOrS3 getAwsEnv path
+      case mlbs of
+        Nothing -> readFirst getAwsEnv paths
+        Just lbs -> return (Just (path,lbs))
 
+    parseContent configPath lbs = case takeExtension configPath of
+      ".json" -> adlFromByteString lbs
+      ".yaml" -> U.adlFromYamlByteString lbs
+      _ -> error ("Unknown file type for config file: " <> configPath <> " (expected .json or .yaml)")
 
 usageText :: T.Text
 usageText = "\
@@ -171,4 +181,5 @@ usageText = "\
   \\n\
   \The config file is read from the file specified with HX_DEPLOY_CONFIG.\n\
   \It defaults to ../etc/hx-deploy-tool.(json|yaml) relative to the executable.\n\
+  \It is allowed to be an s3 path (ie s3://bucket/path).\n\
   \"

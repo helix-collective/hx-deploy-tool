@@ -2,20 +2,26 @@
 module Blobs.S3(
   splitPath,
   fileExists,
+  readFile,
   downloadFileFrom,
   listFiles,
   extendObjectKey,
   deleteFile,
   mkAwsEnv,
-  mkAwsEnvFn
+  mkAwsEnvFn,
+  mkAwsEnvFn0,
+  AwsEnv
   ) where
 
+import Prelude hiding (readFile)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
 import qualified Network.AWS.S3 as S3
 import qualified Data.Conduit.List as CL
 
 import Data.Conduit((.|), ($$+-), ConduitT, sealConduitT, runConduit)
+import Data.Conduit.Combinators(sinkList)
 import Data.Conduit.Binary(sinkFile)
 import Data.Monoid
 import Data.Maybe(catMaybes)
@@ -44,6 +50,7 @@ mkAwsEnv = do
     env0 <- newEnv Discover
     return (env0 & envLogger .~ (L.awsLogger logger))
 
+type AwsEnv = Env
 type AwsEnvFn = IOR Env
 
 -- Create an AWS environment when required, and reuse it subsequently.
@@ -59,6 +66,19 @@ mkAwsEnvFn = do
         liftIO $ putMVar mv awsEnv
         return awsEnv
 
+-- Create an AWS environment when required, and reuse it subsequently.
+-- (in the IO monad for bootstrap purposes)
+mkAwsEnvFn0 :: IO (IO Env)
+mkAwsEnvFn0 = do
+  mv <- liftIO $ newEmptyMVar
+  return $ do
+    menv <- liftIO $ tryReadMVar mv
+    case menv of
+      (Just awsEnv) -> return awsEnv
+      Nothing -> do
+        awsEnv <- newEnv Discover
+        liftIO $ putMVar mv awsEnv
+        return awsEnv
 
 splitPath :: T.Text -> (S3.BucketName,S3.ObjectKey)
 splitPath s3Path = case T.stripPrefix "s3://" s3Path of
@@ -78,6 +98,14 @@ fileExists env bucketName objectKey = do
     onServiceError :: ServiceError -> IO Bool
     onServiceError se | view serviceStatus se == notFound404 = return False
                       | otherwise                            = throwing _ServiceError se
+
+readFile :: Env -> S3.BucketName -> S3.ObjectKey -> IO LBS.ByteString
+readFile env bucketName  objectKey = do
+  runResourceT . runAWST env $ do
+    resp <- send (S3.getObject bucketName objectKey)
+    let src = _streamBody (view S3.gorsBody resp) :: ConduitT () BS.ByteString (ResourceT IO) ()
+        stream = (sealConduitT src) $$+- sinkList
+    LBS.fromChunks <$> liftResourceT stream
 
 downloadFileFrom :: Env -> S3.BucketName -> S3.ObjectKey -> FilePath -> Maybe Int -> IO ()
 downloadFileFrom env bucketName  objectKey toFilePath retryAfter = do
