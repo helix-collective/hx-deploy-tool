@@ -1,0 +1,8 @@
+{
+    "templates" : [
+        "template.json.tpl"
+    ],
+    "prestartCommand" : "echo prestarting...",
+    "startCommand" : "bash ./go.sh",
+    "stopCommand" : "echo stop"
+}
