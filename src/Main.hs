@@ -128,7 +128,7 @@ getConfig envVarName prefixPaths = do
   case takeExtension configPath of
     ".json" -> adlFromJsonFile' configPath
     ".yaml" -> U.adlFromYamlFile' configPath
-    _ -> error ("Unknown file type for config file: " <> configPath)
+    _ -> error ("Unknown file type for config file: " <> configPath <> " (expected .json or .yaml)")
   where
     findFirstExisting configPaths = find1 configPaths
       where

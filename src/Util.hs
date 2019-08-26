@@ -201,7 +201,7 @@ adlFromYamlFile' file = do
       case runJsonParser jsonParser [] jv of
         (ParseFailure e ctx) -> ioError $ userError $
           T.unpack
-            (  "Unable to parse a value of type "
+            (  "Unable to parse a value of ADL type "
             <> atype (Proxy :: Proxy a)
             <> " from " <>  T.pack file <> ": "
             <> e <> " at " <> textFromParseContext ctx
