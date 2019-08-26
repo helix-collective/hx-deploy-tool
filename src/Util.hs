@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 module Util where
 
 import qualified ADL.Core.StringMap as SM
@@ -10,6 +10,7 @@ import qualified Data.Text.Lazy as LT
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
+import qualified Data.Yaml as Y
 import qualified Log as L
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
@@ -20,7 +21,7 @@ import qualified Control.Monad.Trans.AWS as AWS
 
 import ADL.Config(ToolConfig(..), DeployMode(..), DeployContext(..), DeployContextSource(..), ProxyModeConfig(..))
 import ADL.Release(ReleaseConfig(..))
-import ADL.Core(adlFromJsonFile')
+import ADL.Core(adlFromJsonFile', runJsonParser, textFromParseContext, AdlValue(..), ParseResult(..))
 import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Blobs(releaseBlobStore, BlobStore(..), BlobName)
 import Codec.Archive.Zip(withArchive, unpackInto)
@@ -32,6 +33,7 @@ import Control.Monad.Reader
 import Data.List(sortOn)
 import Data.Maybe(fromMaybe)
 import Data.Monoid
+import Data.Proxy
 import Data.Foldable(for_)
 import Data.Time.Clock.POSIX(getCurrentTime)
 import Data.Traversable(for)
@@ -189,3 +191,19 @@ removeNullKeys (JS.Object hm) = (JS.Object (fmap removeNullKeys (HM.filter (not 
     isNull _ = False
 removeNullKeys (JS.Array a) = (JS.Array (fmap removeNullKeys a))
 removeNullKeys json = json
+
+adlFromYamlFile' :: forall a . (AdlValue a) => FilePath -> IO a
+adlFromYamlFile' file = do
+  ejv <- Y.decodeFileEither file
+  case ejv of
+    (Left e) -> ioError $ userError (Y.prettyPrintParseException e)
+    (Right jv) ->
+      case runJsonParser jsonParser [] jv of
+        (ParseFailure e ctx) -> ioError $ userError $
+          T.unpack
+            (  "Unable to parse a value of ADL type "
+            <> atype (Proxy :: Proxy a)
+            <> " from " <>  T.pack file <> ": "
+            <> e <> " at " <> textFromParseContext ctx
+            )
+        (ParseSuccess a) -> return a

@@ -25,9 +25,9 @@ leaves a compressed executable at `/tmp/hx-deploy-tool.x86_64-linux.gz`
 # Installation
 
 `hx-deploy-tool` is a standalone executable, which loads a single configuration
-file on startup. But default this is expected at `../etc/hx-deploy-tool.json`
-relative the the installed executable, although the config file path can be
-overidden by setting the `HX_DEPLOY_CONFIG` environment variable.
+file on startup. But default this is expected at `../etc/hx-deploy-tool.yaml` or
+`../etc/hx-deploy-tool.json`relative to the installed executable, although the
+config file path can be overidden by setting the `HX_DEPLOY_CONFIG` environment variable.
 
 The configuration file must be json formatted, and be consistent with the
 [ToolConfig][toolconfig-adl] ADL type (ADL is the [Algebraic Data Language][adl]).
