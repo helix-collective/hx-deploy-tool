@@ -16,6 +16,7 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Conduit.List as CL
 import qualified Network.AWS.S3 as S3
 import qualified Blobs.S3 as S3
+import qualified Util.Aws as S3
 
 import Control.Exception.Lens
 import Control.Monad.IO.Class

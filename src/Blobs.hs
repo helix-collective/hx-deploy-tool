@@ -3,6 +3,7 @@ module Blobs where
 
 import qualified Data.Text as T
 import qualified Blobs.S3 as S3
+import qualified Util.Aws as AWS
 
 import ADL.Config(ToolConfig(..), BlobStoreConfig(..))
 import Data.Monoid
@@ -33,7 +34,7 @@ createBlobStore (BlobStoreConfig_localdir dirpath)  = localBlobStore (T.unpack d
 
 awsBlobStore :: S3Path -> IOR BlobStore
 awsBlobStore s3Path = do
-  env <- S3.mkAwsEnv
+  env <- AWS.mkAwsEnv
   return (BlobStore s3Path (bs_names env) (bs_exists env) (bs_fetchToFile env))
   where
     (bucketName,objectPrefix) = S3.splitPath s3Path

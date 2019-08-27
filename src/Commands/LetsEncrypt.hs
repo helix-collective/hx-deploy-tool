@@ -23,6 +23,7 @@ import System.Exit(exitWith,ExitCode(..))
 import System.FilePath((</>))
 import System.Process(callProcess)
 import System.IO(stdout)
+import Util.Aws(mkAwsEnv0)
 
 -- | Request new or renewed certificates
 getCerts :: LetsEncryptConfig -> IO ()
@@ -54,7 +55,7 @@ getCerts c = do
 
 authHook :: LetsEncryptConfig -> IO ()
 authHook c = do
-  env <- mkAwsEnv c
+  env <- mkAwsEnv1 c
   (certbotDomain,certbotValidation,hostedZone) <- getDnsDetails c
   let batch = changeBatch (pure (change Create rset))
       rset = resourceRecordSet  ("_acme-challenge." <> certbotDomain) Txt
@@ -68,7 +69,7 @@ authHook c = do
 
 cleanupHook :: LetsEncryptConfig -> IO ()
 cleanupHook c = do
-  env <- mkAwsEnv c
+  env <- mkAwsEnv1 c
   (certbotDomain,certbotValidation,hostedZone) <- getDnsDetails c
   let batch = changeBatch (pure (change Delete rset))
       rset = resourceRecordSet  ("_acme-challenge." <> certbotDomain) Txt
@@ -87,9 +88,9 @@ getDnsDetails c = do
         Right hz -> hz
   return (certbotDomain,"\""<>certbotValidation<>"\"",hostedZone)
 
-mkAwsEnv :: LetsEncryptConfig -> IO Env
-mkAwsEnv c = do
-  env0 <- newEnv Discover
+mkAwsEnv1 :: LetsEncryptConfig -> IO Env
+mkAwsEnv1 c = do
+  env0 <- mkAwsEnv0
   l <- newLogger loglevel stdout
   return (env0 & envLogger .~ l)
   where

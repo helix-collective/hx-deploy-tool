@@ -29,6 +29,7 @@ import System.Posix.Files(fileExist)
 import Types(REnv(..),IOR, getToolConfig)
 import Data.Version(showVersion)
 import Paths_hx_deploy_tool(version)
+import Util.Aws(mkAwsEnvFn0, AwsEnv)
 
 main :: IO ()
 main = do
@@ -126,7 +127,7 @@ getConfig envVarName prefixPaths = do
      exePath <- getExecutablePath
      let prefix = takeDirectory (takeDirectory exePath)
      return [prefix </> path | path <- prefixPaths]
-  getAwsEnv <- S3.mkAwsEnvFn0
+  getAwsEnv <- mkAwsEnvFn0
   mContent <- readFirst getAwsEnv configPaths
   case mContent of
     Nothing -> error ("Config file not found, tried: " <> show configPaths)
@@ -137,7 +138,7 @@ getConfig envVarName prefixPaths = do
         (Left err) -> error (T.unpack err)
         (Right a) -> return a
   where
-    readFirst :: IO S3.AwsEnv -> [FilePath] -> IO (Maybe (FilePath, LBS.ByteString))
+    readFirst :: IO AwsEnv -> [FilePath] -> IO (Maybe (FilePath, LBS.ByteString))
     readFirst getAwsEnv [] = return Nothing
     readFirst getAwsEnv (path:paths) = do
       mlbs <- U.readFileOrS3 getAwsEnv path

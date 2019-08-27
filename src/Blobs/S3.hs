@@ -6,11 +6,7 @@ module Blobs.S3(
   downloadFileFrom,
   listFiles,
   extendObjectKey,
-  deleteFile,
-  mkAwsEnv,
-  mkAwsEnvFn,
-  mkAwsEnvFn0,
-  AwsEnv
+  deleteFile
   ) where
 
 import Prelude hiding (readFile)
@@ -19,66 +15,23 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Text as T
 import qualified Network.AWS.S3 as S3
 import qualified Data.Conduit.List as CL
+import qualified Log as L
 
 import Data.Conduit((.|), ($$+-), ConduitT, sealConduitT, runConduit)
 import Data.Conduit.Combinators(sinkList)
 import Data.Conduit.Binary(sinkFile)
-import Data.Monoid
 import Data.Maybe(catMaybes)
 import Data.List(sortOn)
 import Data.Traversable(for)
 import Control.Concurrent(threadDelay)
-import Control.Concurrent.MVar
-import Control.Exception.Lens
-import Control.Lens
-import Control.Monad.Trans.AWS
-import Control.Monad.Trans.Resource
-import Control.Monad.IO.Class(liftIO)
-import Control.Monad.Reader(ask)
+import Control.Exception.Lens(handling, throwing)
+import Control.Lens(view, set, (&), (.~), (^?))
+import Control.Monad.Trans.AWS(newEnv, envLogger, paginate, runAWST, send, _ServiceError,serviceStatus , Env, ServiceError, Credentials(..))
+import Control.Monad.Trans.Resource(runResourceT, liftResourceT, ResourceT)
 import Network.AWS.Data.Body(RsBody(..))
 import Network.AWS.Data.Text(ToText(..))
 import Network.HTTP.Types.Status(notFound404)
-
-import qualified Log as L
-
 import Types(IOR, REnv(..))
-
-mkAwsEnv :: IOR Env
-mkAwsEnv = do
-  logger <- fmap re_logger ask
-  liftIO $ do
-    env0 <- newEnv Discover
-    return (env0 & envLogger .~ (L.awsLogger logger))
-
-type AwsEnv = Env
-type AwsEnvFn = IOR Env
-
--- Create an AWS environment when required, and reuse it subsequently.
-mkAwsEnvFn :: IOR AwsEnvFn
-mkAwsEnvFn = do
-  mv <- liftIO $ newEmptyMVar
-  return $ do
-    menv <- liftIO $ tryReadMVar mv
-    case menv of
-      (Just awsEnv) -> return awsEnv
-      Nothing -> do
-        awsEnv <- mkAwsEnv
-        liftIO $ putMVar mv awsEnv
-        return awsEnv
-
--- Create an AWS environment when required, and reuse it subsequently.
--- (in the IO monad for bootstrap purposes)
-mkAwsEnvFn0 :: IO (IO Env)
-mkAwsEnvFn0 = do
-  mv <- liftIO $ newEmptyMVar
-  return $ do
-    menv <- liftIO $ tryReadMVar mv
-    case menv of
-      (Just awsEnv) -> return awsEnv
-      Nothing -> do
-        awsEnv <- newEnv Discover
-        liftIO $ putMVar mv awsEnv
-        return awsEnv
 
 splitPath :: T.Text -> (S3.BucketName,S3.ObjectKey)
 splitPath s3Path = case T.stripPrefix "s3://" s3Path of

@@ -44,6 +44,7 @@ import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Posix.Files(createSymbolicLink, removeLink)
 import System.IO(stdout, withFile, hIsEOF, IOMode(..))
 import System.Directory(listDirectory, doesFileExist, copyFile)
+import Util.Aws(mkAwsEnvFn)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 
@@ -55,7 +56,7 @@ fetchConfigContext :: Maybe Int -> IOR ()
 fetchConfigContext retryAfter = do
   scopeInfo "Fetching deploy context from store" $ do
     tcfg <- getToolConfig
-    awsEnvFn <- S3.mkAwsEnvFn
+    awsEnvFn <- mkAwsEnvFn
     do
       liftIO $ createDirectoryIfMissing True (T.unpack (tc_contextCache tcfg))
 
