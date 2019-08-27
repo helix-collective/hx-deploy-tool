@@ -3,6 +3,8 @@ module config
 import types.FilePath;
 import types.S3Path;
 import types.EndPointLabel;
+import types.StaticConfigName;
+import types.StringKeyMap;
 import sys.types.Map;
 import sys.types.Pair;
 import sys.types.Maybe;
@@ -23,7 +25,9 @@ struct ToolConfig {
     /// The storage location for release zip files
     BlobStoreConfig releases;
 
-    Vector<DeployContext> deployContexts = [];
+    /// Static Config contexts
+    StringKeyMap<StaticConfigName, JsonSource> configSources = {};
+
     DeployMode deployMode = "noproxy";
 
     // Support for AWS health checks in proxy mode
@@ -43,10 +47,9 @@ union BlobStoreConfig {
    FilePath localdir;
 };
 
-
 struct ProxyModeConfig {
     /// The configured endpoints.
-    StringMap<EndPoint> endPoints;
+    StringKeyMap<EndPointLabel, EndPoint> endPoints;
 
     /// If set, we are in remote mode, with state stored at this S3 path
     Maybe<S3Path> remoteStateS3 = "nothing";
@@ -103,13 +106,8 @@ struct SslCertPaths {
   FilePath sslCertificateKey;
 };
 
-struct DeployContext
-{
-    String name;
-    DeployContextSource source;
-};
-
-union DeployContextSource
+/// Methods of providing text for a config context
+union JsonSource
 {
     // Context from a local file
     FilePath file;

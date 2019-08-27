@@ -1,6 +1,9 @@
 module types
 {
 
+/// Phantom Key type naming the string key type
+type StringKeyMap<Key,Value> = StringMap<Value>;
+
 type FilePath = String;
 
 type S3Path = String;
@@ -8,5 +11,11 @@ type S3Path = String;
 type EndPointLabel = String;
 
 type DeployLabel = String;
+
+/// ConfigTopic is a name of one of the keys of the top level object used for template interpolation
+type ConfigName = String;
+
+/// Name of a topic as part of the static config contexts - eg 'infrastructure' 'secrets'
+type StaticConfigName = ConfigName;
 
 };

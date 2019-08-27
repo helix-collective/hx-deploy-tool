@@ -28,7 +28,7 @@ import ADL.Release(ReleaseConfig(..))
 import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), MachineLabel(..))
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
-import Util(unpackRelease,fetchDeployContext, checkReleaseExists)
+import Util(unpackRelease,fetchConfigContext, checkReleaseExists)
 import Commands.ProxyMode.Types
 import Commands.ProxyMode.LocalState(localState, restartLocalProxy, generateLocalSslCertificate)
 import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path, flushSlaveStates)

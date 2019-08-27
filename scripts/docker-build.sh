@@ -5,6 +5,8 @@
 
 set -ex
 
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null && pwd )"
+
 stack docker pull
 stack --docker build
 EXE=$(stack --docker exec which hx-deploy-tool)
@@ -13,3 +15,4 @@ cp $EXE $TARGET
 gzip -f $TARGET
 echo "Binary written to $TARGET.gz"
 
+cp $EXE ${ROOT}/tests/

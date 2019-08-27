@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.Config(
     BlobStoreConfig(..),
-    DeployContext(..),
-    DeployContextSource(..),
     DeployMode(..),
     EndPoint(..),
     EndPointType(..),
     HealthCheckConfig(..),
+    JsonSource(..),
     LetsEncryptConfig(..),
     MachineLabel(..),
     ProxyModeConfig(..),
@@ -22,7 +21,6 @@ import qualified ADL.Sys.Types
 import qualified ADL.Types
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Map as M
 import qualified Data.Proxy
 import qualified Data.Text as T
 import qualified Data.Word
@@ -45,48 +43,6 @@ instance AdlValue BlobStoreConfig where
         =   parseUnionValue "s3" BlobStoreConfig_s3
         <|> parseUnionValue "localdir" BlobStoreConfig_localdir
         <|> parseFail "expected a BlobStoreConfig"
-
-data DeployContext = DeployContext
-    { dc_name :: T.Text
-    , dc_source :: DeployContextSource
-    }
-    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
-
-mkDeployContext :: T.Text -> DeployContextSource -> DeployContext
-mkDeployContext name source = DeployContext name source
-
-instance AdlValue DeployContext where
-    atype _ = "config.DeployContext"
-    
-    jsonGen = genObject
-        [ genField "name" dc_name
-        , genField "source" dc_source
-        ]
-    
-    jsonParser = DeployContext
-        <$> parseField "name"
-        <*> parseField "source"
-
-data DeployContextSource
-    = Dcs_file ADL.Types.FilePath
-    | Dcs_s3 ADL.Types.S3Path
-    | Dcs_awsSecretArn T.Text
-    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
-
-instance AdlValue DeployContextSource where
-    atype _ = "config.DeployContextSource"
-    
-    jsonGen = genUnion (\jv -> case jv of
-        Dcs_file v -> genUnionValue "file" v
-        Dcs_s3 v -> genUnionValue "s3" v
-        Dcs_awsSecretArn v -> genUnionValue "awsSecretArn" v
-        )
-    
-    jsonParser
-        =   parseUnionValue "file" Dcs_file
-        <|> parseUnionValue "s3" Dcs_s3
-        <|> parseUnionValue "awsSecretArn" Dcs_awsSecretArn
-        <|> parseFail "expected a DeployContextSource"
 
 data DeployMode
     = DeployMode_noproxy
@@ -169,6 +125,27 @@ instance AdlValue HealthCheckConfig where
         <$> parseField "incomingPath"
         <*> parseField "outgoingPath"
 
+data JsonSource
+    = Jsrc_file ADL.Types.FilePath
+    | Jsrc_s3 ADL.Types.S3Path
+    | Jsrc_awsSecretArn T.Text
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue JsonSource where
+    atype _ = "config.JsonSource"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        Jsrc_file v -> genUnionValue "file" v
+        Jsrc_s3 v -> genUnionValue "s3" v
+        Jsrc_awsSecretArn v -> genUnionValue "awsSecretArn" v
+        )
+    
+    jsonParser
+        =   parseUnionValue "file" Jsrc_file
+        <|> parseUnionValue "s3" Jsrc_s3
+        <|> parseUnionValue "awsSecretArn" Jsrc_awsSecretArn
+        <|> parseFail "expected a JsonSource"
+
 data LetsEncryptConfig = LetsEncryptConfig
     { lec_certbotPath :: T.Text
     , lec_awsHostedZoneId :: T.Text
@@ -221,7 +198,7 @@ instance AdlValue MachineLabel where
         <|> parseFail "expected a MachineLabel"
 
 data ProxyModeConfig = ProxyModeConfig
-    { pm_endPoints :: StringMap (EndPoint)
+    { pm_endPoints :: (ADL.Types.StringKeyMap ADL.Types.EndPointLabel EndPoint)
     , pm_remoteStateS3 :: (ADL.Sys.Types.Maybe ADL.Types.S3Path)
     , pm_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
     , pm_slaveLabel :: MachineLabel
@@ -229,7 +206,7 @@ data ProxyModeConfig = ProxyModeConfig
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkProxyModeConfig :: StringMap (EndPoint) -> ProxyModeConfig
+mkProxyModeConfig :: (ADL.Types.StringKeyMap ADL.Types.EndPointLabel EndPoint) -> ProxyModeConfig
 mkProxyModeConfig endPoints = ProxyModeConfig endPoints Prelude.Nothing ((,) 8000 8100) MachineLabel_ec2InstanceId Prelude.Nothing
 
 instance AdlValue ProxyModeConfig where
@@ -298,14 +275,14 @@ data ToolConfig = ToolConfig
     , tc_autoCertName :: T.Text
     , tc_autoCertContactEmail :: T.Text
     , tc_releases :: BlobStoreConfig
-    , tc_deployContexts :: [DeployContext]
+    , tc_configSources :: (ADL.Types.StringKeyMap ADL.Types.StaticConfigName JsonSource)
     , tc_deployMode :: DeployMode
     , tc_healthCheck :: (ADL.Sys.Types.Maybe HealthCheckConfig)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: BlobStoreConfig -> ToolConfig
-mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases [  ] DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
+mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases (stringMapFromList []) DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -319,7 +296,7 @@ instance AdlValue ToolConfig where
         , genField "autoCertName" tc_autoCertName
         , genField "autoCertContactEmail" tc_autoCertContactEmail
         , genField "releases" tc_releases
-        , genField "deployContexts" tc_deployContexts
+        , genField "configSources" tc_configSources
         , genField "deployMode" tc_deployMode
         , genField "healthCheck" tc_healthCheck
         ]
@@ -333,7 +310,7 @@ instance AdlValue ToolConfig where
         <*> parseFieldDef "autoCertName" "hxdeploytoolcert"
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
-        <*> parseFieldDef "deployContexts" [  ]
+        <*> parseFieldDef "configSources" (stringMapFromList [])
         <*> parseFieldDef "deployMode" DeployMode_noproxy
         <*> parseFieldDef "healthCheck" (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 

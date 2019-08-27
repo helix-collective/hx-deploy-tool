@@ -27,7 +27,7 @@ import ADL.Nginx(NginxConfContext(..), NginxHealthCheck(..), NginxEndPoint(..), 
 import ADL.State(State(..), Deploy(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Commands.ProxyMode.Types
-import Util(unpackRelease,fetchDeployContext,removeNullKeys)
+import Util(unpackRelease,fetchConfigContext,removeNullKeys)
 import Control.Monad(when)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
@@ -117,7 +117,7 @@ executeAction (CreateDeploy d) = do
   scopeInfo "execute CreateDeploy" $ do
     tcfg <- getToolConfig
     pm <- getProxyModeConfig
-    fetchDeployContext Nothing
+    fetchConfigContext Nothing
     let deployDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
     liftIO $ createDirectoryIfMissing True deployDir
     unpackRelease (contextWithLocalPorts pm (d_port d)) (d_release d) deployDir

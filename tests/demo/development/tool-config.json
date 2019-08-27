@@ -1,0 +1,20 @@
+{
+    "releasesDir" : "--MACHINE_ROOT--/opt/releases",
+    "contextCache" : "--MACHINE_ROOT--/opt/etc/configsCache",
+    "logFile" : "--MACHINE_ROOT--/opt/hx-deploy-tool.log",
+    "releases" : {
+        "localdir" : "--S3EMULATE--/releaseZips/"
+    },
+    "configSources": {
+        "configsrcW" : {
+            "file" : "--S3EMULATE--/configSources/configsrcW.json"
+        },
+        "configsrcX" : {
+            "file" : "--S3EMULATE--/configSources/configsrcX.json"
+        },
+        "configsrcY" : {
+            "file" : "--S3EMULATE--/configSources/configsrcY.json"
+        }
+    },
+    "deployMode" : "noproxy"
+}

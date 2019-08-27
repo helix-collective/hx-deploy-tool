@@ -44,7 +44,7 @@ import System.IO(stdout, withFile, hIsEOF, IOMode(..))
 import System.Process(callCommand)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
-import Util(unpackRelease, fetchDeployContext)
+import Util(unpackRelease, fetchConfigContext)
 import Commands.ProxyMode.LocalState(nginxConfTemplate)
 
 -- Make the specified release the live release, replacing any existing release.
@@ -63,7 +63,7 @@ startNoProxy release = do
     let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
 
     -- Fetch the context in case it has been updated
-    fetchDeployContext Nothing
+    fetchConfigContext Nothing
 
     liftIO $ createDirectoryIfMissing True newReleaseDir
 

@@ -1,9 +1,9 @@
 module state {
 
 import sys.types.Map;
-import sys.types.Maybe;
 import types.EndPointLabel;
 import types.DeployLabel;
+import types.StringKeyMap;
 
 // The system state stored to manage multiple deploys with
 // a proxy for live switching between them and, where specified, SSL
@@ -11,10 +11,10 @@ import types.DeployLabel;
 
 struct State {
   // Live deployments
-  StringMap<Deploy> deploys;
+  StringKeyMap<DeployLabel, Deploy> deploys;
 
   // Connections between the configured endpoints and deployments
-  StringMap<DeployLabel> connections;
+  StringKeyMap<EndPointLabel, DeployLabel> connections;
 };
 
 // A running deployed system
