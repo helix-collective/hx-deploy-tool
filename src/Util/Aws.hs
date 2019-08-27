@@ -8,24 +8,55 @@ module Util.Aws(
   ) where
 
 import qualified Log as L
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.Text as T
 
 import Control.Concurrent.MVar(newEmptyMVar, tryReadMVar, putMVar)
 import Control.Monad.IO.Class(liftIO)
-import Control.Monad.Trans.AWS(newEnv, envLogger, paginate, runAWST, send, _ServiceError,serviceStatus , Env, ServiceError, Credentials(..))
+import Control.Monad.Trans.AWS(newEnv, envLogger, paginate, runAWST, configure, send, _ServiceError, serviceStatus, setEndpoint, Env, ServiceError, Credentials(..))
+import System.Environment(lookupEnv)
 import Types(IOR, REnv(..))
 import Control.Monad.Reader(ask)
-import Control.Lens(view, set, (&), (.~), (^?))
+import Control.Lens(view, set, (&), (.~), (^?), (<&>))
+import Network.URI(parseURI, URI(..), URIAuth(..))
+import Network.AWS.S3(s3)
 
 type AwsEnv = Env
 type AwsEnvFn = IOR Env
 
 
 -- Construct an AWS environment using the builtin
--- discover mechanism for credentials
+-- discovery mechanism for credentials. If the
+-- S3_ENDPOINT environment variable is set as
+--
+--    http[s]://host:port
+--
+-- that will override the AWS default s3 endpoint.
 mkAwsEnv0 :: IO AwsEnv
 mkAwsEnv0 = do
   env <- newEnv Discover
-  return env
+  mS3Endpoint <- lookupEnv varName
+  case mS3Endpoint of
+    Nothing -> return env
+    Just s3Endpoint -> case parseEndpoint s3Endpoint of
+        Nothing -> error ("Unable to parse " <> varName)
+        Just (isHttps,host,port) -> do
+          let s3' = setEndpoint isHttps host port s3
+          return env <&> configure s3'
+  where
+    varName = "S3_ENDPOINT"
+
+    parseEndpoint :: String -> Maybe (Bool,BS.ByteString,Int)
+    parseEndpoint uriStr =
+     case parseURI uriStr of
+       Just uri@URI{uriAuthority=Just auth} ->
+         let isHttps = uriScheme uri == "https:"
+             host = BS.pack (uriRegName auth)
+             port = case uriPort auth of
+               "" -> 80
+               c:portStr -> read portStr
+         in (Just (isHttps,host,port))
+       Nothing -> Nothing
 
 -- Construct an AWS environment, configuring the AWS
 -- logging to use the application logger embedded in the IOR
