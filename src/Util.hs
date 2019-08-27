@@ -32,7 +32,7 @@ import Control.Monad(when)
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.Reader
-import Data.List(sortOn)
+import Data.List(isPrefixOf,sortOn)
 import Data.Maybe(fromMaybe)
 import Data.Monoid
 import Data.Proxy
@@ -44,6 +44,7 @@ import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Posix.Files(createSymbolicLink, removeLink)
 import System.IO(stdout, withFile, hIsEOF, IOMode(..))
 import System.Directory(listDirectory, doesFileExist, copyFile)
+import Util.Aws(mkAwsEnvFn)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 
@@ -55,7 +56,7 @@ fetchConfigContext :: Maybe Int -> IOR ()
 fetchConfigContext retryAfter = do
   scopeInfo "Fetching deploy context from store" $ do
     tcfg <- getToolConfig
-    awsEnvFn <- S3.mkAwsEnvFn
+    awsEnvFn <- mkAwsEnvFn
     do
       liftIO $ createDirectoryIfMissing True (T.unpack (tc_contextCache tcfg))
 
@@ -201,18 +202,30 @@ removeNullKeys (JS.Object hm) = (JS.Object (fmap removeNullKeys (HM.filter (not 
 removeNullKeys (JS.Array a) = (JS.Array (fmap removeNullKeys a))
 removeNullKeys json = json
 
-adlFromYamlFile' :: forall a . (AdlValue a) => FilePath -> IO a
-adlFromYamlFile' file = do
-  ejv <- Y.decodeFileEither file
-  case ejv of
-    (Left e) -> ioError $ userError (Y.prettyPrintParseException e)
-    (Right jv) ->
-      case runJsonParser jsonParser [] jv of
-        (ParseFailure e ctx) -> ioError $ userError $
-          T.unpack
-            (  "Unable to parse a value of ADL type "
-            <> atype (Proxy :: Proxy a)
-            <> " from " <>  T.pack file <> ": "
-            <> e <> " at " <> textFromParseContext ctx
-            )
-        (ParseSuccess a) -> return a
+adlFromYamlByteString :: forall a . (AdlValue a) => LBS.ByteString -> (ParseResult a)
+adlFromYamlByteString lbs = case Y.decodeEither' (LBS.toStrict lbs) of
+  (Left e) -> ParseFailure ("Invalid yaml:" <> T.pack (Y.prettyPrintParseException e)) []
+  (Right jv) -> runJsonParser jsonParser [] jv
+
+decodeAdlParseResult :: forall a . (AdlValue a) => T.Text -> ParseResult a -> Either T.Text a
+decodeAdlParseResult from (ParseFailure e ctx) = Left
+  (  "Unable to parse a value of ADL type "
+  <> atype (Proxy :: Proxy a)
+  <> from <> ": "
+  <> e <> " at " <> textFromParseContext ctx
+  )
+decodeAdlParseResult _ (ParseSuccess a) = Right a
+
+readFileOrS3 :: IO AWS.Env -> FilePath -> IO (Maybe LBS.ByteString)
+readFileOrS3 getAwsEnv configPath | isPrefixOf "s3://" configPath = do
+  let (s3bucket,s3path) = S3.splitPath (T.pack configPath)
+  awsEnv <- getAwsEnv
+  exists <- S3.fileExists awsEnv s3bucket s3path
+  if exists
+    then Just <$> S3.readFile awsEnv s3bucket s3path
+    else return Nothing
+readFileOrS3 _ configPath = do
+  exists <- doesFileExist configPath
+  if exists
+    then Just <$> LBS.readFile configPath
+    else return Nothing

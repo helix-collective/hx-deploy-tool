@@ -45,6 +45,7 @@ import System.Process(callCommand)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
 import Util(unpackRelease, fetchConfigContext)
+import Util.Aws(mkAwsEnv)
 import Commands.ProxyMode.LocalState(nginxConfTemplate)
 
 -- Make the specified release the live release, replacing any existing release.
@@ -133,7 +134,7 @@ listReleases = do
 awsDockerLoginCmd :: IOR ()
 awsDockerLoginCmd = do
   tcfg <- getToolConfig
-  env <- S3.mkAwsEnv
+  env <- mkAwsEnv
   liftIO $ do
     runResourceT . runAWST env $ do
       resp <- send ECR.getAuthorizationToken
