@@ -11,8 +11,8 @@ import sys.types.Maybe;
 
 /// Configuration file for the deployment tool
 struct ToolConfig {
-    FilePath releasesDir = "/opt/releases";
-    FilePath contextCache = "/opt/etc/deployment";
+    FilePath deploysDir = "/opt/deploys";
+    FilePath contextCache = "/opt/config";
     FilePath logFile = "/opt/var/log/camus2.log";
     FilePath letsencryptPrefixDir = "/opt";
     FilePath letsencryptWwwDir = "/opt/var/www";

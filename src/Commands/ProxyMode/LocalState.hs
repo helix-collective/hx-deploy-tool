@@ -118,7 +118,7 @@ executeAction (CreateDeploy d) = do
     tcfg <- getToolConfig
     pm <- getProxyModeConfig
     fetchConfigContext Nothing
-    let deployDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
+    let deployDir = T.unpack (tc_deploysDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
     liftIO $ createDirectoryIfMissing True deployDir
     unpackRelease (contextWithLocalPorts pm (d_port d)) (d_release d) deployDir
 
@@ -130,7 +130,7 @@ executeAction (CreateDeploy d) = do
 executeAction (DestroyDeploy d) = do
   scopeInfo "execute DestroyDeploy" $ do
     tcfg <- getToolConfig
-    let deployDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
+    let deployDir = T.unpack (tc_deploysDir tcfg) </> (takeBaseName (T.unpack (d_release d)))
     rcfg <- getReleaseConfig deployDir
     scopeInfo "running stop script" $ callCommandInDir deployDir (rc_stopCommand rcfg)
     scopeInfo "removing directory" $ liftIO $ removeDirectoryRecursive deployDir
@@ -163,7 +163,7 @@ getState = do
 getProxyDir :: IOR FilePath
 getProxyDir = do
   tcfg <- getToolConfig
-  let proxyDir = T.unpack (tc_releasesDir tcfg) </> "frontend-proxy"
+  let proxyDir = T.unpack (tc_deploysDir tcfg) </> "frontend-proxy"
   liftIO $ createDirectoryIfMissing True proxyDir
   return proxyDir
 
