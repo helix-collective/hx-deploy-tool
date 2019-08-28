@@ -27,7 +27,7 @@ import System.FilePath(takeDirectory, takeExtension, (</>))
 import System.Posix.Files(fileExist)
 import Types(REnv(..),IOR, getToolConfig)
 import Data.Version(showVersion)
-import Paths_hx_deploy_tool(version)
+import Paths_camus2(version)
 import Util.Aws(mkAwsEnvFn0, AwsEnv)
 
 main :: IO ()
@@ -109,7 +109,7 @@ runWithConfigAndLog ma = do
     ehandler logger e = L.error logger ("Exception: " <> LT.pack (show (e::SomeException)))
 
 loadToolConfig :: IO ToolConfig
-loadToolConfig = getConfig "HX_DEPLOY_CONFIG" ["etc/hx-deploy-tool.json", "etc/hx-deploy-tool.yaml"]
+loadToolConfig = getConfig "CAMUS2_CONFIG" ["etc/camus2.json", "etc/camus2.yaml"]
 
 getLetsEncryptConfig :: IO LetsEncryptConfig
 getLetsEncryptConfig = getConfig "HX_LETSENCRYPT_CONFIG" ["etc/letsencrypt-aws.json"]
@@ -153,33 +153,33 @@ getConfig envVarName prefixPaths = do
 usageText :: T.Text
 usageText = "\
   \General Usage:\n\
-  \  hx-deploy-tool help\n\
-  \  hx-deploy-tool list-releases\n\
-  \  hx-deploy-tool show-log\n\
-  \  hx-deploy-tool --version\n\
+  \  c2 help\n\
+  \  c2 list-releases\n\
+  \  c2 show-log\n\
+  \  c2 --version\n\
   \\n\
   \Deployment with a proxy:\n\
-  \  hx-deploy-tool status [--show-slaves]\n\
-  \  hx-deploy-tool start <release>\n\
-  \  hx-deploy-tool stop <release>\n\
-  \  hx-deploy-tool restart-frontend-proxy\n\
-  \  hx-deploy-tool connect <endpoint> <release>\n\
-  \  hx-deploy-tool disconnect <endpoint>\n\
+  \  c2 status [--show-slaves]\n\
+  \  c2 start <release>\n\
+  \  c2 stop <release>\n\
+  \  c2 restart-frontend-proxy\n\
+  \  c2 connect <endpoint> <release>\n\
+  \  c2 disconnect <endpoint>\n\
   \\n\
   \Deployment without a proxy:\n\
-  \  hx-deploy-tool select <release>\n\
+  \  c2 select <release>\n\
   \\n\
   \Plumbing/Low Level Operations:\n\
-  \  hx-deploy-tool fetch-context [--retry]\n\
-  \  hx-deploy-tool unpack <release> <todir>\n\
-  \  hx-deploy-tool expand-template <templatePath> <destPath>\n\
-  \  hx-deploy-tool show-default-nginx-config\n\
-  \  hx-deploy-tool aws-docker-login-cmd\n\
-  \  hx-deploy-tool generate-ssl-certificate\n\
-  \  hx-deploy-tool slave-flush\n\
-  \  hx-deploy-tool slave-update [--repeat n]\n\
+  \  c2 fetch-context [--retry]\n\
+  \  c2 unpack <release> <todir>\n\
+  \  c2 expand-template <templatePath> <destPath>\n\
+  \  c2 show-default-nginx-config\n\
+  \  c2 aws-docker-login-cmd\n\
+  \  c2 generate-ssl-certificate\n\
+  \  c2 slave-flush\n\
+  \  c2 slave-update [--repeat n]\n\
   \\n\
-  \The config file is read from the file specified with HX_DEPLOY_CONFIG.\n\
-  \It defaults to ../etc/hx-deploy-tool.(json|yaml) relative to the executable.\n\
+  \The config file is read from the file specified with CAMUS2_CONFIG.\n\
+  \It defaults to ../etc/camus2.(json|yaml) relative to the executable.\n\
   \It is allowed to be an s3 path (ie s3://bucket/path).\n\
   \"

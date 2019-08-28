@@ -282,7 +282,7 @@ data ToolConfig = ToolConfig
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: BlobStoreConfig -> ToolConfig
-mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/hx-deploy-tool.log" "/opt" "/opt/var/www" "hxdeploytoolcert" "" releases (stringMapFromList []) DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
+mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/camus2.log" "/opt" "/opt/var/www" "camus2cert" "" releases (stringMapFromList []) DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
@@ -304,10 +304,10 @@ instance AdlValue ToolConfig where
     jsonParser = ToolConfig
         <$> parseFieldDef "releasesDir" "/opt/releases"
         <*> parseFieldDef "contextCache" "/opt/etc/deployment"
-        <*> parseFieldDef "logFile" "/opt/var/log/hx-deploy-tool.log"
+        <*> parseFieldDef "logFile" "/opt/var/log/camus2.log"
         <*> parseFieldDef "letsencryptPrefixDir" "/opt"
         <*> parseFieldDef "letsencryptWwwDir" "/opt/var/www"
-        <*> parseFieldDef "autoCertName" "hxdeploytoolcert"
+        <*> parseFieldDef "autoCertName" "camus2cert"
         <*> parseFieldDef "autoCertContactEmail" ""
         <*> parseField "releases"
         <*> parseFieldDef "configSources" (stringMapFromList [])

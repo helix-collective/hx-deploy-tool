@@ -1,4 +1,4 @@
-name:                hx-deploy-tool
+name:                camus2
 version:             0.14
 synopsis:            Tool to facilitate unpacking and configuring helix software releases
 -- description:
@@ -16,7 +16,7 @@ extra-source-files:  README.md
 data-files:            docs/help.md
                      , config/nginx.conf.tpl
 
-executable hx-deploy-tool
+executable c2
   hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       ADL.Core
@@ -39,7 +39,7 @@ executable hx-deploy-tool
                      , Commands.ProxyMode.RemoteState
                      , HelpText
                      , Log
-                     , Paths_hx_deploy_tool
+                     , Paths_camus2
                      , Types
                      , Util
                      , Util.Aws

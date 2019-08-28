@@ -1,13 +1,13 @@
-hx-deploy-tool is a simple tool to manage docker based application
+camus2 is a simple tool to manage docker based application
 deployments at helix.
 
 A software release is a (typically small) zip archive containing pure
 configuration, typically a docker-compose file and other configuration
-files templates. `hx-deploy-tool` can fetch such releases from AWS S3,
+files templates. `c2` can fetch such releases from AWS S3,
 unpack them, configure it with appropriate environmental details and
 start the system.
 
-The hx-deploy-tool itself has a json formatted configuration file with
+camus2 itself has a json formatted configuration file with
 a schema specfied in ADL (see config.adl in the source
 distribution). This specifies:
 
@@ -32,23 +32,23 @@ proxy endpoints.
 # Deployments with a proxy
 The following subcommands are used to manage reverse proxy deployments:
 
-## hx-deploy-tool status
+## c2 status
 Show the proxy system status: specifically the endpoints and live
 deploys.
 
-## hx-deploy-tool start <release>
+## c2 start <release>
 Create and start a deployment (if it's not already running)
 
-## hx-deploy-tool stop <release>
+## c2 stop <release>
 Stop and remove a deployment
 
-## hx-deploy-tool connect <endpoint> <release>
+## c2 connect <endpoint> <release>
 Connect an endpoint to a running deployment
 
-## hx-deploy-tool disconnect <endpoint>
+## c2 disconnect <endpoint>
 Disconnect an endpoint
 
-## hx-deploy-tool slave-update [--repeat n]
+## c2 slave-update [--repeat n]
 If the tool is configured with proxy remote state, this fetches
 the master state from S3, and updates the local state to match.
 With a repeat argument, the command will repeat every n seconds,
@@ -57,7 +57,7 @@ running indefinitely.
 # Deployments without a proxy
 The following subcommands are used to manage proxyless deployments:
 
-## hx-deploy-tool select <release>
+## c2 select <release>
 The command combines all of the necessary functions to replace
 any existing running release with the specified release.
 Specifically it:
@@ -74,32 +74,32 @@ Specifically it:
 # Misc subcommands
 The following other subcommands are available:
 
-## hx-deploy-tool help
+## c2 help
 Shows this help text.
 
-## hx-deploy-tool fetch-context [--retry]
+## c2 fetch-context [--retry]
 Downloads the environmental information files from AWS S3. The
 `--retry` option is useful during system bootstrap, and it is
 necessary to wait for the information files to be created.
 
-## hx-deploy-tool list-releases
+## c2 list-releases
 Shows the release archives available in S3, most recent first.
 
-## hx-deploy-tool unpack <release> <todir>
+## c2 unpack <release> <todir>
 Unpack and configure the specified release into the given directory.
 
-## hx-deploy-tool expand-template <templatePath> <destPath>
+## c2 expand-template <templatePath> <destPath>
 Injects the config contexts specified in `configSources` into a template
 found at `templatePath` and saves the resulting file to `destPath`
 
-## hx-deploy-tool aws-docker-login-cmd
+## c2 aws-docker-login-cmd
 Assuming this is run on a AWS EC2 instance, this subcommand runs
 the appropriate docker login command using the instance profile
 to permit access to configured ECR repositories. This command is
 typically run on first boot.
 
-## hx-deploy-tool show-log
+## c2 show-log
 Show the history of releases deployed via the select command.
 
-## hx-deploy-tool show-default-nginx-config
+## c2 show-default-nginx-config
 Outputs the default template for the nginx config.
