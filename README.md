@@ -1,4 +1,4 @@
-# hx-deploy-tool
+# c2
 
 A small tool to automate the annoying bits of deployment, making it more likely engineers do deployments right(tm)
 and make deployments a joy. Can work atop docker or 'bare metal'. It pulls config and release zip files from
@@ -17,7 +17,7 @@ It's the spiritual successor to https://github.com/helix-collective/camus
   - A second stated design goal is rollbacks and roll-forwards should be fast, easy and have 0 downtime. By default the various connect/disconnect commands cause the nginx frontend proxy to reconfigure and reload, forwarding traffic to the specified running deploy.
 
 # Requirements:
- - Configuration file: see docs/example_deploy.json for an example and adl/config.adl for specification in ADL. defaults to ../etc/hx-deploy-tool.json
+ - Configuration file: see docs/example_deploy.json for an example and adl/config.adl for specification in ADL. defaults to ../etc/c2.json
  - AWS Credentials: see https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/ 
  - S3 buckets with necessary permissions for storing state and retrieving releases
  - Folders with necessary permissions for writing logs
@@ -31,32 +31,32 @@ It's the spiritual successor to https://github.com/helix-collective/camus
 # Command Overview
 
 ```
-$ hx-deploy-tool
+$ c2
 General Usage:
-  hx-deploy-tool help
-  hx-deploy-tool list-releases
-  hx-deploy-tool show-log
-  hx-deploy-tool --version
+  c2 help
+  c2 list-releases
+  c2 show-log
+  c2 --version
 
 Deployment:
-  hx-deploy-tool status [--show-slaves]
-  hx-deploy-tool start <release>
-  hx-deploy-tool stop <release>
-  hx-deploy-tool restart-frontend-proxy
-  hx-deploy-tool connect <endpoint> <release>
-  hx-deploy-tool disconnect <endpoint>
+  c2 status [--show-slaves]
+  c2 start <release>
+  c2 stop <release>
+  c2 restart-frontend-proxy
+  c2 connect <endpoint> <release>
+  c2 disconnect <endpoint>
 
 Plumbing/Low Level Operations:
-  hx-deploy-tool fetch-context [--retry]
-  hx-deploy-tool unpack <release> <todir>
-  hx-deploy-tool aws-docker-login-cmd
-  hx-deploy-tool expand-template <templatePath> <destPath>
-  hx-deploy-tool show-default-nginx-config
-  hx-deploy-tool generate-ssl-certificate
-  hx-deploy-tool slave-update [--repeat n]
+  c2 fetch-context [--retry]
+  c2 unpack <release> <todir>
+  c2 aws-docker-login-cmd
+  c2 expand-template <templatePath> <destPath>
+  c2 show-default-nginx-config
+  c2 generate-ssl-certificate
+  c2 slave-update [--repeat n]
 
-The config file is read from the file specified with HX_DEPLOY_CONFIG.
-It defaults to ../etc/hx-deploy-tool.(json|yaml) relative to the executable.
+The config file is read from the file specified with CAMUS2_CONFIG.
+It defaults to ../etc/camus2.(json|yaml) relative to the executable.
 ```
 
 # Additional Information

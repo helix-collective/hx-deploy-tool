@@ -13,13 +13,13 @@ import sys.types.Maybe;
 struct ToolConfig {
     FilePath releasesDir = "/opt/releases";
     FilePath contextCache = "/opt/etc/deployment";
-    FilePath logFile = "/opt/var/log/hx-deploy-tool.log";
+    FilePath logFile = "/opt/var/log/camus2.log";
     FilePath letsencryptPrefixDir = "/opt";
     FilePath letsencryptWwwDir = "/opt/var/www";
 
     /// If the deploy tool needs to generate an SSL certificate
     /// using letsencrypt, it will be called this.
-    String autoCertName = "hxdeploytoolcert";
+    String autoCertName = "camus2cert";
     String autoCertContactEmail = "";
 
     /// The storage location for release zip files

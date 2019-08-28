@@ -1,7 +1,7 @@
 {
     "releasesDir" : "--MACHINE_ROOT--/opt/releases",
     "contextCache" : "--MACHINE_ROOT--/opt/etc/configsCache",
-    "logFile" : "--MACHINE_ROOT--/opt/hx-deploy-tool.log",
+    "logFile" : "--MACHINE_ROOT--/opt/camus2.log",
     "releases" : {
         "localdir" : "--S3EMULATE--/releaseZips/"
     },
