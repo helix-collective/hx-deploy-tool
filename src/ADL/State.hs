@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module ADL.State(
     Deploy(..),
+    SlaveState(..),
+    SlaveStatus(..),
     State(..),
 ) where
 
@@ -37,6 +39,45 @@ instance AdlValue Deploy where
         <$> parseField "label"
         <*> parseField "release"
         <*> parseField "port"
+
+data SlaveState = SlaveState
+    { slaveState_status :: SlaveStatus
+    , slaveState_state :: State
+    }
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+mkSlaveState :: SlaveStatus -> State -> SlaveState
+mkSlaveState status state = SlaveState status state
+
+instance AdlValue SlaveState where
+    atype _ = "state.SlaveState"
+    
+    jsonGen = genObject
+        [ genField "status" slaveState_status
+        , genField "state" slaveState_state
+        ]
+    
+    jsonParser = SlaveState
+        <$> parseField "status"
+        <*> parseField "state"
+
+data SlaveStatus
+    = SlaveStatus_ok
+    | SlaveStatus_error T.Text
+    deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
+
+instance AdlValue SlaveStatus where
+    atype _ = "state.SlaveStatus"
+    
+    jsonGen = genUnion (\jv -> case jv of
+        SlaveStatus_ok -> genUnionVoid "ok"
+        SlaveStatus_error v -> genUnionValue "error" v
+        )
+    
+    jsonParser
+        =   parseUnionVoid "ok" SlaveStatus_ok
+        <|> parseUnionValue "error" SlaveStatus_error
+        <|> parseFail "expected a SlaveStatus"
 
 data State = State
     { s_deploys :: (ADL.Types.StringKeyMap ADL.Types.DeployLabel Deploy)

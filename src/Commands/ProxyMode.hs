@@ -26,15 +26,15 @@ import ADL.Config(EndPoint(..), EndPointType(..))
 import ADL.Core(adlFromJsonFile', adlToJsonFile)
 import ADL.Release(ReleaseConfig(..))
 import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), MachineLabel(..))
-import ADL.State(State(..), Deploy(..))
+import ADL.State(State(..), Deploy(..), SlaveState(..), SlaveStatus(..))
 import ADL.Types(EndPointLabel, DeployLabel)
 import Util(unpackRelease,fetchConfigContext, checkReleaseExists)
 import Commands.ProxyMode.Types
 import Commands.ProxyMode.LocalState(localState, restartLocalProxy, generateLocalSslCertificate)
 import Commands.ProxyMode.RemoteState(remoteState, writeSlaveState, masterS3Path, flushSlaveStates)
 import Control.Concurrent(threadDelay)
-import Control.Exception(SomeException)
-import Control.Monad.Catch(catch)
+import Control.Exception(throwIO, SomeException)
+import Control.Monad.Catch(catch, handle)
 import Control.Monad.Reader(ask)
 import Control.Monad.IO.Class
 import Control.Monad(when)
@@ -60,9 +60,12 @@ showStatus showSlaves = do
     liftIO $ for_ slaveStates $ \(label,slaveState) -> do
       T.putStrLn "----------------------------------------------------------------------"
       T.putStrLn ("Slave: " <> label)
-      for_ (ss_lastModified slaveState) $ \lm ->
+      case slaveState_status (lm_value slaveState) of
+        SlaveStatus_ok -> T.putStrLn ("Status: OK")
+        SlaveStatus_error emsg -> T.putStrLn ("Status: Error (" <> emsg <> ")")
+      for_ (lm_modifiedAt slaveState) $ \lm ->
          T.putStrLn ("Updated: " <> (T.pack (show lm)))
-      printState pm (ss_state slaveState)
+      printState pm (slaveState_state (lm_value slaveState))
   where
     printState pm state = do
       T.putStrLn "Endpoints:"
@@ -160,9 +163,16 @@ slaveUpdate_ = do
         (Just s3Path) -> s3Path
   scopeInfo ("Fetching state from " <> masterS3Path remoteStateS3) $ do
     state <- sa_get (remoteState remoteStateS3)
-    sa_update localState (const state)
     label <- getSlaveLabel
-    writeSlaveState remoteStateS3 label state
+    handle (ehandler remoteStateS3 label) $ do
+      sa_update localState (const state)
+      writeSlaveState remoteStateS3 label (SlaveState SlaveStatus_ok state)
+  where
+    ehandler remoteStateS3 label e = do
+      let emsg = T.pack (show (e::SomeException))
+      existingState <- sa_get localState
+      writeSlaveState remoteStateS3 label (SlaveState (SlaveStatus_error emsg) existingState)
+      liftIO $ throwIO e
 
 -- Flash slave state from S3 that is more than 5 minutes old
 slaveFlush :: IOR ()
@@ -191,7 +201,7 @@ getState = do
     Nothing -> sa_get localState
     (Just s3Path) -> sa_get (remoteState s3Path)
 
-getSlaveStates :: IOR [(T.Text, SlaveState)]
+getSlaveStates :: IOR [(T.Text, LastModified SlaveState)]
 getSlaveStates = do
   pm <- getProxyModeConfig
   case pm_remoteStateS3 pm of

@@ -34,7 +34,7 @@ import Network.AWS.Types(serviceStatus)
 import Network.HTTP.Types(notFound404)
 
 import ADL.Core(adlFromByteString, adlToByteString, textFromParseContext, ParseResult(..))
-import ADL.State(State(..), Deploy(..))
+import ADL.State(State(..), Deploy(..), SlaveState(..))
 import Commands.ProxyMode.Types
 import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 import Util(decodeAdlParseResult)
@@ -51,15 +51,15 @@ remoteState  remoteStateS3 = StateAccess {
 getState :: S3Path -> IOR State
 getState remoteStateS3 = do
   env <- AWS.mkAwsEnv
-  s3s_state <$> stateFromS3 env (masterS3Path remoteStateS3)
+  lm_value <$> stateFromS3 env (masterS3Path remoteStateS3)
 
-getSlaves :: S3Path -> IOR [(T.Text, SlaveState)]
+getSlaves :: S3Path -> IOR [(T.Text, LastModified SlaveState)]
 getSlaves remoteStateS3 = do
   env <- AWS.mkAwsEnv
   labels <- getSlaveLabels env
   for labels $ \label -> do
-    state <- stateFromS3 env (slaveS3Path remoteStateS3 label)
-    return (label,mkSlaveState state)
+    state <- slaveStateFromS3 env (slaveS3Path remoteStateS3 label)
+    return (label,state)
   where
     getSlaveLabels :: Env -> IOR [T.Text]
     getSlaveLabels env = do
@@ -74,21 +74,19 @@ getSlaves remoteStateS3 = do
       Nothing -> Nothing
       (Just s) -> Just (T.takeWhileEnd (/='/') s)
 
-    mkSlaveState (S3State state mLastModified) = SlaveState state mLastModified
-
 updateState :: S3Path -> (State -> State) -> IOR ()
 updateState remoteStateS3 modf = do
   let s3Path = masterS3Path remoteStateS3
   info ("Updating remote state at " <> s3Path)
   env <- AWS.mkAwsEnv
-  state <- s3s_state <$> stateFromS3 env s3Path
+  state <- lm_value <$> stateFromS3 env s3Path
   let state' = modf state
   stateToS3 env s3Path state'
 
-writeSlaveState :: S3Path -> T.Text -> State -> IOR ()
+writeSlaveState :: S3Path -> T.Text -> SlaveState -> IOR ()
 writeSlaveState remoteStateS3 label state = do
   env <- AWS.mkAwsEnv
-  stateToS3 env (slaveS3Path remoteStateS3 label) state
+  slaveStateToS3 env (slaveS3Path remoteStateS3 label) state
 
 -- Remove slave states that haven't been updated since
 -- the specified time
@@ -98,7 +96,7 @@ flushSlaveStates notUpdatedSince remoteStateS3 = do
   ls <- getSlaves remoteStateS3
   env <- AWS.mkAwsEnv
   for_ ls $ \(label, sstate) -> do
-    case ss_lastModified sstate of
+    case lm_modifiedAt sstate of
       (Just lastModified) | lastModified < notUpdatedSince -> do
         let s3path = slaveS3Path remoteStateS3 label
         info ("removing old slave state at " <> s3path)
@@ -106,24 +104,35 @@ flushSlaveStates notUpdatedSince remoteStateS3 = do
         liftIO $ S3.deleteObject env bucketName objectKey
       _ -> return ()
 
-data S3State = S3State {
-  s3s_state :: State,
-  s3s_lastModified :: Maybe UTCTime
-}
-
-stateFromS3 :: Env -> S3Path -> IOR S3State
+stateFromS3 :: Env -> S3Path -> IOR (LastModified State)
 stateFromS3 env s3Path = do
   let (bucketName,objectKey) = S3.splitPath s3Path
   liftIO $ do
     mpr <- S3.adlValueFromS3 env bucketName objectKey
     case mpr of
-      Nothing -> return (S3State emptyState Nothing)
+      Nothing -> return (LastModified emptyState Nothing)
       Just (s3m,pr) -> case decodeAdlParseResult s3Path pr of
         Left emsg -> error (T.unpack emsg)
-        Right state -> return (S3State state (S3.s3m_lastModified s3m))
+        Right state -> return (LastModified state (S3.s3m_lastModified s3m))
 
 stateToS3 :: Env -> S3Path -> State -> IOR ()
 stateToS3 env s3Path state = do
+  let (bucketName,objectKey) = S3.splitPath s3Path
+  liftIO $ S3.adlValueToS3 env bucketName objectKey state
+
+slaveStateFromS3 :: Env -> S3Path -> IOR (LastModified SlaveState)
+slaveStateFromS3 env s3Path = do
+  let (bucketName,objectKey) = S3.splitPath s3Path
+  liftIO $ do
+    mpr <- S3.adlValueFromS3 env bucketName objectKey
+    case mpr of
+      Nothing -> error ("Slave state not found at " <> T.unpack s3Path)
+      Just (s3m,pr) -> case decodeAdlParseResult s3Path pr of
+        Left emsg -> error (T.unpack emsg)
+        Right state -> return (LastModified state (S3.s3m_lastModified s3m))
+
+slaveStateToS3 :: Env -> S3Path -> SlaveState -> IOR ()
+slaveStateToS3 env s3Path state = do
   let (bucketName,objectKey) = S3.splitPath s3Path
   liftIO $ S3.adlValueToS3 env bucketName objectKey state
 
