@@ -30,7 +30,6 @@ executable hx-deploy-tool
                      , ADL.Sys.Types
                      , ADL.Types
                      , Blobs
-                     , Blobs.S3
                      , Blobs.Secrets
                      , Commands
                      , Commands.LetsEncrypt
@@ -44,6 +43,7 @@ executable hx-deploy-tool
                      , Types
                      , Util
                      , Util.Aws
+                     , Util.Aws.S3
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , aeson >= 1.0 && < 1.5
