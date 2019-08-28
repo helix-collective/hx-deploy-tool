@@ -31,7 +31,7 @@ config file path can be overidden by setting the `CAMUS2_CONFIG` environment var
 
 The configuration file must be json formatted, and be consistent with the
 [ToolConfig][toolconfig-adl] ADL type (ADL is the [Algebraic Data Language][adl]).
-[An example configuration file can be found at: ](docs/example_deploy.json)
+[An example configuration file can be found at: ](/docs/example_deploy.json)
 
 Additionally, aws credentials must be supplied and will be expected at either:
 $HOME/.aws/credentials file

@@ -1,0 +1,13 @@
+{
+    "releasesDir": "{*REQUIRED*RELEASE DIRECTORY}",
+    "contextCache": "{*REQUIRED*CONFIG DIRECTORY}",
+    "logFile": "{*REQUIRED*LOG FILE LOCATION: requires directory to exist}",
+    "letsencryptPrefixDir": "{PREFIX DIRECTORY}",
+    "letsencryptWwwDir": "{WEBSERVER DIRECTORY}",
+    "autoCertName": "{AWS SSH CERT NAME}",
+    "autoCertContactEmail": "",
+    "releases": {
+      "s3": "*REQUIRED*s3://{S3 RELEASE BUCKET PATH}- only specify one location,local or S3"
+      "localdir": "*REQUIRED*/tmp/releases - only specify one location,local or S3"
+    }
+  }

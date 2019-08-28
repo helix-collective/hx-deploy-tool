@@ -1,4 +1,6 @@
-# Camus 2
+# Camus2
+
+[Userguide](https://helix-collective.github.io/hx-deploy-tool/docs/1-user-guide.html)
 
 A small tool to automate the annoying bits of deployment, making it more likely engineers do deployments right(tm)
 and make deployments a joy. Can work atop docker or 'bare metal'. It pulls config and release zip files from
@@ -21,9 +23,9 @@ It's the spiritual successor to https://github.com/helix-collective/camus
  - AWS Credentials: see https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/ 
  - S3 buckets with necessary permissions for storing state and retrieving releases
  - Folders with necessary permissions for writing logs
- -  Release Binaries:
+ -  Release files:
     Stored in S3 in a .zip file
-    Contains - binary to be deployed
+    Contains - binary(optional) and/or scripts to be deployed
     release.json - config for deployment including predeploy, deploy and stopping commands to execute, and references to template files 
     Template files - mustache template files for configuration of other components such as proxy, fluentd and docker compose (based on deploy configuration).
 //todo add refernce to wiki where list of mustache parameters would be detailed.
@@ -61,6 +63,6 @@ It defaults to ../etc/camus2.(json|yaml) relative to the executable.
 
 # Additional Information
 
-- [Installation and configuration](docs/installation.md)
-- [Usage](docs/help.md)
-
+- [Installation and configuration](/helix-collective/docs/installation.md)
+- [Usage](/helix-collective/docs/help.md)
+- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/docs/1-user-guide.html)
