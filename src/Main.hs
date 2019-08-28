@@ -11,7 +11,6 @@ import qualified Commands.ProxyMode as P
 import qualified Commands as C
 import qualified Util as U
 import qualified Log as L
-import qualified Blobs.S3 as S3
 
 import ADL.Config(ToolConfig(..), LetsEncryptConfig(..), DeployMode(..))
 import ADL.Core(adlFromByteString, AdlValue)

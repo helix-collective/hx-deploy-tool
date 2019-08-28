@@ -2,8 +2,8 @@
 module Blobs where
 
 import qualified Data.Text as T
-import qualified Blobs.S3 as S3
 import qualified Util.Aws as AWS
+import qualified Util.Aws.S3 as S3
 
 import ADL.Config(ToolConfig(..), BlobStoreConfig(..))
 import Data.Monoid
@@ -41,10 +41,10 @@ awsBlobStore s3Path = do
     objectKey blobname = S3.extendObjectKey objectPrefix ("/" <> blobname)
 
     bs_names env = do
-      S3.listFiles env bucketName objectPrefix
+      S3.listObjects env bucketName objectPrefix
 
     bs_exists env blobname = do
-      S3.fileExists env bucketName (objectKey blobname)
+      S3.objectExists env bucketName (objectKey blobname)
 
     bs_fetchToFile env blobname filepath = do
       S3.downloadFileFrom env bucketName (objectKey blobname)  filepath Nothing

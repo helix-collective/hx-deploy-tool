@@ -17,6 +17,21 @@ struct State {
   StringKeyMap<EndPointLabel, DeployLabel> connections;
 };
 
+
+// The reported state of a slave
+struct SlaveState {
+  // The result of the last state change
+  SlaveStatus status;
+
+  // The state of the slave after the last succesful state change
+  State state;
+};
+
+union SlaveStatus {
+  Void ok;
+  String error;
+};
+
 // A running deployed system
 struct Deploy {
   DeployLabel label;

@@ -4,19 +4,19 @@ import qualified ADL.Core.StringMap as SM
 import qualified Data.Text as T
 
 import ADL.Config(EndPoint(..), ToolConfig(..), DeployMode(..), ProxyModeConfig(..))
-import ADL.State(State(..), Deploy(..))
+import ADL.State(State(..), Deploy(..), SlaveState(..))
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
 import Data.Time(UTCTime)
 
 data StateAccess = StateAccess {
   sa_get :: IOR State,
-  sa_getSlaves :: IOR [(T.Text,SlaveState)],
+  sa_getSlaves :: IOR [(T.Text,LastModified SlaveState)],
   sa_update :: (State -> State) -> IOR ()
 }
 
-data SlaveState = SlaveState {
-  ss_state :: State,
-  ss_lastModified :: Maybe UTCTime
+data LastModified a = LastModified {
+  lm_value:: a,
+  lm_modifiedAt:: Maybe UTCTime
 }
 
 -- | The actions we can apply to change the state

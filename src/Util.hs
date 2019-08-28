@@ -15,7 +15,7 @@ import qualified Data.Yaml as Y
 import qualified Log as L
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
-import qualified Blobs.S3 as S3
+import qualified Util.Aws.S3 as S3
 import qualified Blobs.Secrets as Secrets
 
 import qualified Control.Monad.Trans.AWS as AWS
@@ -92,7 +92,7 @@ fetchConfigContext retryAfter = do
    jsrcExists awsEnvFn (Jsrc_s3 s3Path) = do
      env <- awsEnvFn
      let (bucket,key)  = S3.splitPath s3Path
-     liftIO $ S3.fileExists env bucket key
+     liftIO $ S3.objectExists env bucket key
    jsrcExists awsEnvFn (Jsrc_awsSecretArn arn) = do
      env <- awsEnvFn
      liftIO $ Secrets.secretExists env arn
@@ -220,9 +220,9 @@ readFileOrS3 :: IO AWS.Env -> FilePath -> IO (Maybe LBS.ByteString)
 readFileOrS3 getAwsEnv configPath | isPrefixOf "s3://" configPath = do
   let (s3bucket,s3path) = S3.splitPath (T.pack configPath)
   awsEnv <- getAwsEnv
-  exists <- S3.fileExists awsEnv s3bucket s3path
+  exists <- S3.objectExists awsEnv s3bucket s3path
   if exists
-    then Just <$> S3.readFile awsEnv s3bucket s3path
+    then Just <$> S3.readObject awsEnv s3bucket s3path
     else return Nothing
 readFileOrS3 _ configPath = do
   exists <- doesFileExist configPath
