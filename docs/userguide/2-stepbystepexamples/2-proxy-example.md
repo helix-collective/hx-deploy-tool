@@ -5,7 +5,7 @@ Here is how to do a deployment with a reverse proxy sidecar:
 ## 1.1. Download the latest release of camus2
 
 Seems a little obvious, but the camus2 release includes a bunch of goodies that you will need to make the deployment work.
-You can find the minimum requirements [here](/hx-deploy-tool/docs/userguide/minimum-requirements), so have a read before you try to get things running.
+Have a look and make sure you meet the [minimum requirements](/hx-deploy-tool/docs/userguide/1-welcome/5-minimum-requirements).
 
 We are going to use camus2 to deploy a release on a single machine, with an automatically configured nginx reverse proxy.
 
@@ -101,15 +101,15 @@ All the location and deployment parameters are defined in camus2.json, and for o
 
 ```
 
-The sample [camus2.json](https://github.com/helix-collective/hx-deploy-tool/blob/master/docs/templates/example_deploy_simpleproxy.json) that is included in the camus2 release has descriptive values, or you can read more about using it [here //todo](https://helix-collective.github.io/hx-deploy-tool/)
+The sample camus2.json that is included in the camus2 release has descriptive values, or you can read more about using it in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive)
 
 Copy the executable binary that you downloaded as part of the latest release to a suitable folder for execution.
 
-The configuration file is expected at ../etc/camus2.json, relative to where you place the binary. You can specify an alternate location and name for this file using an `HX_DEPLOY_CONFIG' environment variable.
+The configuration file is expected at ../etc/camus2.json, relative to where you place the binary. You can specify an alternate location and name for this file using an `CAMUS2_CONFIG' environment variable.
 
 ## 1.4. Deploy our test
 
-Let's make sure camus2 can find our releases, run `./camus2 list-releases`
+Let's make sure camus2 can find our releases, run `./c2 list-releases`
 You should see the release archives listed:
 
 ```
@@ -118,9 +118,9 @@ test1.zip
 ```
 
 Now simply starting a release will unpack it, and execute the pre-start, stop, and start commands listed in your release.
-If you are using our example configurations, `./camus2 start test1.zip` should do all that.
+If you are using our example configurations, `./c2 start test1.zip` should do all that.
 
-Lets run the command again to deploy the second release as well `./camus2 start test2.zip`. Running `camus2 status` should yield the following:
+Lets run the command again to deploy the second release as well `./c2 start test2.zip`. Running `c2 status` should yield the following:
 
 ```
 Endpoints:
@@ -136,9 +136,9 @@ This means that it successfully started containers for both releases, with the '
 You can also use the docker cli to confirm that both containers are running, and [docker inspect](https://docs.docker.com/engine/reference/commandline/inspect/) to get the IP address of the container. 
 
 Now we are going to deploy a nginx proxy to manage the routing of these two containers.
-Running `camus2 connect main test1.zip` and `camus2 connect test test2.zip` will use the parameters in the configuration to create an nginx proxy using the latest nginx docker image, and connect it using the specified ports to the relevant containers.
+Running `c2 connect main test1.zip` and `c2 connect test test2.zip` will use the parameters in the configuration to create an nginx proxy using the latest nginx docker image, and connect it using the specified ports to the relevant containers.
 
-Running `camus2 status` should now yield the following:
+Running `c2 status` should now yield the following:
 
 ```
 Endpoints:
@@ -159,8 +159,8 @@ It Works!
 ```
 
 Before you can stop the container, you need to disconnect it from the endpoint, or connect another release to the endpoint.
-If you execute `./camus2 disconnect test`, `test.localhost:8001` will now show the nginx 503 error as it is no longer connected to a container.
-You can stop the release by running `./camus2 stop test1.zip`
+If you execute `./c2 disconnect test`, `test.localhost:8001` will now show the nginx 503 error as it is no longer connected to a container.
+You can stop the release by running `./c2 stop test1.zip`
 
 **Congratulations, you've completed a proxy deployment with camus2!!!**
 
@@ -195,6 +195,5 @@ More details can be found in the how it works section, or the example config fil
 
 ---
 
-- [Index](/hx-deploy-tool/docs/userguide/index)
-- [Userguide home](/hx-deploy-tool/docs/1-user-guide)
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

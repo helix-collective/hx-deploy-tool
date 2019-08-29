@@ -34,9 +34,9 @@ Slaves will log their state to the S3 bucket also, allowing you to easily confir
 
 In the release.json file, you can specify a list of template files using [mustache](https://mustache.github.io/mustache.5.html) notation that are bundled in your release.
 Camus2 will use the tags specified in the config file to turn the templates into release specific artefacts.
-A simple example is that we use the {{ports.http}} tag to inject the port that we configure in the config file, into both the nginx config, and the docker-compose config in our [proxy deployment example](/hx-deploy-tool/docs/userguide/proxy-example.md).
+A simple example is that we use the {{ports.http}} tag to inject the port that we configure in the config file, into both the nginx config, and the docker-compose config in our [proxy deployment example](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/2-proxy-example).
 
-Additionally, you can specify your own tags in the config file. A run down of the standard tags and how to use the custom tags are detailed in the [template anything](/hx-deploy-tool/docs/templates/mustachetags.md) section
+Additionally, you can specify your own tags in the config file. A run down of the standard tags and how to use the custom tags are detailed in the [template anything](/hx-deploy-tool/docs/userguide/3-reference/3-templateanything) section
 
 ## AWS health checks
 
@@ -48,5 +48,5 @@ Each instance of camus2, whether in slave or master mode, will log its actions a
 
 ---
 
-- [Index](/hx-deploy-tool/docs/userguide/index)
-- [Userguide home](/hx-deploy-tool/docs/1-user-guide)
+- [Index](/hx-deploy-tool/index)
+- [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

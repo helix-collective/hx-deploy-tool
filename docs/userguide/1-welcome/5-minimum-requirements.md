@@ -11,8 +11,8 @@ At a minimum, you will need the following (with example files included in the re
   - release.json - (examples included in the release) - a config for deployment including predeploy, deploy and stop commands to execute. Also declares template files.
 - S3 bucket(s) or directory with necessary permissions for r/w - release store and optional state store
 - The following working directories, with write permissions for the user(s) who will run camus2 (can be changed by specifying in config file).
-  - /opt/releases     # where releases get unpacked for deployment
-  - /opt/etc/deployment  # where deployment contexts get written
+  - /opt/deploys     # where releases get unpacked for deployment
+  - /opt/config  # where deployment contexts get written
   - /opt/var/log/    # where the log file gets written
 
 
@@ -23,6 +23,5 @@ At a minimum, you will need the following (with example files included in the re
 
 ---
 
-- [Index](/hx-deploy-tool/docs/userguide/index)
-- [Userguide home](/hx-deploy-tool/docs/1-user-guide)
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

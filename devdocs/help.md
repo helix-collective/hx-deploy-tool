@@ -7,7 +7,7 @@ files templates. `c2` can fetch such releases from AWS S3,
 unpack them, configure it with appropriate environmental details and
 start the system.
 
-camus2 itself has a json formatted configuration file with
+Camus2 itself has a json formatted configuration file with
 a schema specfied in ADL (see config.adl in the source
 distribution). This specifies:
 
@@ -104,5 +104,4 @@ Show the history of releases deployed via the start command.
 ## c2 show-default-nginx-config
 Outputs the default template for the nginx config.
 
-
-- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/docs/1-user-guide.html)
+- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/index.html)

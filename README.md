@@ -1,13 +1,13 @@
 # Camus2
 
-[Userguide](https://helix-collective.github.io/hx-deploy-tool/docs/1-user-guide.html)
-
 A small tool to automate the annoying bits of deployment, making it more likely engineers do deployments right(tm)
 and make deployments a joy. Can work atop docker or 'bare metal'. It pulls config and release zip files from
 various sources (eg. S3), unpacks into versioned directories, and runs commands to start, stop, and expose
 them as required.
 
 It's the spiritual successor to https://github.com/helix-collective/camus
+
+This is the developer docs, follow the link for the [Userguide](https://helix-collective.github.io/hx-deploy-tool/docs/index.html)
 
 # Conceptual Model
 
@@ -63,6 +63,6 @@ It defaults to ../etc/camus2.(json|yaml) relative to the executable.
 
 # Additional Information
 
-- [Installation and configuration](/helix-collective/docs/installation.md)
-- [Usage](/helix-collective/docs/help.md)
-- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/docs/1-user-guide.html)
+- [Installation and configuration](/helix-collective/devdocs/installation.md)
+- [Usage](/helix-collective/devdocs/help.md)
+- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/index.html)

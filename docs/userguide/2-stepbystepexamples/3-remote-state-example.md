@@ -1,11 +1,11 @@
 # Autoscaling deployments (remote state) example
 
-Deploying in an autoscaling group is similar to, and builds on the [reverse proxy sidecar](/hx-deploy-tool/docs/userguide/stepbystepexamples/2-proxy-example) example, so if you have that set up already, you can add the remote s3 and slave label to your config, and skip to **Deploy our test** (but recommending stopping all containers and emptying the release and log directories so you can follow the example)
+Deploying in an autoscaling group is similar to, and builds on the [reverse proxy sidecar](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/2-proxy-example) example, so if you have that set up already, you can add the remote s3 and slave label to your config, and skip to **Deploy our test** (but recommending stopping all containers and emptying the release and log directories so you can follow the example)
 
 ## 1.1. Download the latest release of camus2
 
 Seems a little obvious, but the release includes a bunch of goodies that you will need to make the deployment work.
-You can find the minimum requirements [here](/hx-deploy-tool/docs/userguide/minimum-requirements), so have a read before you try to get things running.
+Have a look and make sure you meet the [minimum requirements](/hx-deploy-tool/docs/userguide/1-welcome/5-minimum-requirements).
 
 We are going to use camus2 to deploy a release on a single machine, with an automatically configured nginx reverse proxy.
 
@@ -47,7 +47,7 @@ services:
 Note the {{ports.http}} in the place of the host port in the docker-compose.yml.
 camus2 will get this parameter from the release config (camus2.json), and inject it into any template with relevant tags, and create a non-template artefact with all tags replaced with values.
 
-To that end, rename the file to docker-compose.yml.tpl so that the tool will recognise it as a template. More detail around the [mustache magic](/hx-deploy-tool/docs/userguide/mustachetags) available with the tool after the link.
+To that end, rename the file to docker-compose.yml.tpl so that the tool will recognise it as a template. More detail around the mustache magid in [Template anything](/hx-deploy-tool/docs/userguide/3-reference/3-templateanything) available with the tool after the link.
 
 Our release will also include a release.json with the following:
 
@@ -120,7 +120,7 @@ All the location and deployment parameters are defined in camus2.json, and for o
 This differs from the proxy example only in specifying 2 additional parameters, the location of the remote state store, and a label for the slave. 
 The slave label is used for logging, and, if ommitted, camus2 will query the aws api for the ec2 instance name/label, which will make it easy to identify the slave in ec2 from the slave status on s3.
 
-The sample [camus2.json](https://github.com/helix-collective/hx-deploy-tool/blob/master/docs/templates/example_deploy_simpleproxy.json) that is included in the camus2 release has descriptive values, or you can read more about using it [here //todo](https://helix-collective.github.io/hx-deploy-tool/)
+The sample camus2.json that is included in the camus2 release has descriptive values, or you can read more about using it in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive)
 
 Copy the executable binary that you downloaded as part of the latest camus2 release to a suitable folder for execution.
 
@@ -151,8 +151,8 @@ Deploys:
 
 We need to run c2 in slave mode to actually unpack the release locally.
 
-Running `./hx-deploy-tool slave-update` will read the master state from s3, and make sure the local machine in the same state.
-In this scenario, it will will unpack the release, and execute the pre-start, stop, and start commands listed in your release. If all those steps were successful, running `./hx-deploy-tool status --show-slaves ` should result in the following status:
+Running `./c2 slave-update` will read the master state from s3, and make sure the local machine in the same state.
+In this scenario, it will will unpack the release, and execute the pre-start, stop, and start commands listed in your release. If all those steps were successful, running `./c2 status --show-slaves ` should result in the following status:
 
 ```
 Endpoints:
@@ -176,7 +176,7 @@ Deploys:
 The first status is the master state, and after the line, it will list all the slave statuses.
 You can also use the docker cli to confirm that a container is running for test1, and [docker inspect](https://docs.docker.com/engine/reference/commandline/inspect/) to get the IP address of the container.
 
-Switching back to master mode, lets connect the container to the main endpoint, because going to `main.localhost:80` will currently result in an error: `./c2 connect main test1.zip` will update the remote state. Running `./hx-deploy-tool status --show-slaves ` will show that the slave has not update yet:
+Switching back to master mode, lets connect the container to the main endpoint, because going to `main.localhost:80` will currently result in an error: `./c2 connect main test1.zip` will update the remote state. Running `./c2 status --show-slaves ` will show that the slave has not update yet:
 
 ```
 Endpoints:
@@ -197,8 +197,8 @@ Deploys:
 
 ```  
 
-This is because we haven't told the slave to update yet. `./hx-deploy-tool slave-update` will get camus2 to read the master state, download and start the nginx reverse proxy, and connect it to the test1 container at the specified port - updating the slave state in the remote store once successful.
-`./hx-deploy-tool status --show-slaves ` will now show the slave state as connected to main
+This is because we haven't told the slave to update yet. `./c2 slave-update` will get camus2 to read the master state, download and start the nginx reverse proxy, and connect it to the test1 container at the specified port - updating the slave state in the remote store once successful.
+`./c2 status --show-slaves ` will now show the slave state as connected to main
 
 ```
 Endpoints:
@@ -299,6 +299,7 @@ You can stop the release by running `./c2 stop test1.zip`
 
 ---
 
-- [Index](/hx-deploy-tool/docs/userguide/index)
-- [Userguide home](/hx-deploy-tool/docs/1-user-guide)
+---
+
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

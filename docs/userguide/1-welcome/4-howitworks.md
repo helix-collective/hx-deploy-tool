@@ -86,5 +86,5 @@ SSL termination isn't supported for autoscaling as a loadbalancer is expected to
 
 ---
 
-- [Index](/hx-deploy-tool/docs/userguide/index)
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

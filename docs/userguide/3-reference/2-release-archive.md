@@ -1,4 +1,4 @@
-# Configuring Release.json
+# Managing your release archive
 
 //todo explain everything that happens in the release file.
 
@@ -8,3 +8,10 @@
   - **_Optional_** Deployment Scripts
   - **_Optional_** Binary to be deployed (the deploy command/script can source the binary)
 - **_Optional_** AWS Credentials: see the [official AWS credential page](https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/)
+
+
+
+---
+
+- [Index](/hx-deploy-tool/index)
+- [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

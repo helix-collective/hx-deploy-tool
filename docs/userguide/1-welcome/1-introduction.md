@@ -1,16 +1,10 @@
-# Welcome
+# Introduction
 
-This user guide is aimed at end users who would like to use [camus2](https://github.com/helix-collective/hx-deploy-tool/releases) to manage their deployments with a simple tool rather than authoring and maintaining scripts
-If you would like to read developer documentation and source code, you can find it [here](https://github.com/helix-collective/hx-deploy-tool)
+## Quick start
+Grab the latest release from [camus2](https://github.com/helix-collective/hx-deploy-tool/releases) gitub, and have a look at the minimum requirements, and you are good to go!
 
-If you are looking for a tl/dr cookbook example using the tool, follow the link to our [simple example page](https://helix-collective.github.io/hx-deploy-tool/docs/userguide/simple-example), the [proxy example](https://helix-collective.github.io/hx-deploy-tool/docs/userguide/proxy-example)
-or, jump to our userguide [Index](https://helix-collective.github.io/hx-deploy-tool/docs/1-user-guide.html)
-
-## What is camus2
-
-Camus2 (pronounced cahmu tu) is a small yet versatile tool to automate the annoying bits of deployment, making it more likely engineers do deployments right(tm) and make deployments a joy.
-Can work with any deployment scripts ('bare metal') and designed to work well with docker in aws.
-It pulls config and release zip files from various sources (eg. local or S3), unpacks into versioned directories, and runs commands to start, stop, and expose them as required.
+If you are looking for a tl/dr cookbook example using camus2, follow the link to our [simple example page](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/1-basic-example), the [proxy example](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/2-proxy-example)
+or, jump to our userguide [Index](/hx-deploy-tool/index.html) for more
 
 ## Why use camus2
 
@@ -29,5 +23,5 @@ it sounds like you may benefit from using one of the many orchestration tools av
 
 ---
 
-- [Index](/hx-deploy-tool/docs/userguide/index)
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)
