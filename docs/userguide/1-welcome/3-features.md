@@ -48,5 +48,5 @@ Each instance of camus2, whether in slave or master mode, will log its actions a
 
 ---
 
-- [Index](/hx-deploy-tool/index)
+- [Index](/hx-deploy-tool/docs/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

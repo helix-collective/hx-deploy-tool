@@ -23,5 +23,5 @@ At a minimum, you will need the following (with example files included in the re
 
 ---
 
-- [Index](/hx-deploy-tool/index)
+- [Index](/hx-deploy-tool/docs/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

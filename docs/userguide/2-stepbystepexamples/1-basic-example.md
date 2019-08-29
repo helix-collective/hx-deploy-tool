@@ -101,5 +101,5 @@ Now lets step into a more complicated deployment...
 
 ---
 
-- [Index](/hx-deploy-tool/index)
+- [Index](/hx-deploy-tool/docs/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

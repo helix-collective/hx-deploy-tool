@@ -65,4 +65,4 @@ It defaults to ../etc/camus2.(json|yaml) relative to the executable.
 
 - [Installation and configuration](/helix-collective/devdocs/installation.md)
 - [Usage](/helix-collective/devdocs/help.md)
-- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/index.html)
+- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/docs/index.html)

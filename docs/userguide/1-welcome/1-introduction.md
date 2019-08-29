@@ -4,7 +4,7 @@
 Grab the latest release from [camus2](https://github.com/helix-collective/hx-deploy-tool/releases) gitub, and have a look at the minimum requirements, and you are good to go!
 
 If you are looking for a tl/dr cookbook example using camus2, follow the link to our [simple example page](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/1-basic-example), the [proxy example](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/2-proxy-example)
-or, jump to our userguide [Index](/hx-deploy-tool/index.html) for more
+or, jump to our userguide [Index](/hx-deploy-tool/docs/index.html) for more
 
 ## Why use camus2
 
@@ -23,5 +23,5 @@ it sounds like you may benefit from using one of the many orchestration tools av
 
 ---
 
-- [Index](/hx-deploy-tool/index)
+- [Index](/hx-deploy-tool/docs/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)
