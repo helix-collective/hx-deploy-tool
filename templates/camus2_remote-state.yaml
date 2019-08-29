@@ -1,0 +1,22 @@
+releasesDir: /deploytest/releases
+logFile: /tmp/deploytest/camus2.log
+releases: 
+  localdir: /tmp/tests
+deployMode: 
+  proxy: 
+    endPoints: 
+      main: 
+        serverNames: 
+          - main.localhost
+        etype: httpOnly
+      test: 
+        serverNames: 
+          - test.localhost
+        etype: httpOnly
+    remoteStateS3: 
+      just: s3://{S3 BUCKET FOR TRACKING APP STATE}
+    slaveLabel:
+      - label: myslave
+    dynamicPortRange: 
+        v1: 8000
+        v2: 8100

@@ -28,7 +28,8 @@ This is the developer docs, follow the link for the [Userguide](https://helix-co
     Contains - binary(optional) and/or scripts to be deployed
     release.json - config for deployment including predeploy, deploy and stopping commands to execute, and references to template files 
     Template files - mustache template files for configuration of other components such as proxy, fluentd and docker compose (based on deploy configuration).
-//todo add refernce to wiki where list of mustache parameters would be detailed.
+
+For more details on requirements and optional parameters, refer to the [Userguide](https://helix-collective.github.io/hx-deploy-tool/docs/index.html)
 
 # Command Overview
 

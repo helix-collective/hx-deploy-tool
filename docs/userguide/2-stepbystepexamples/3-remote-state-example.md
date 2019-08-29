@@ -18,9 +18,6 @@ In the latest release package, you will find several useful files to help you ge
 
 As we will be connecting to s3 for storing our state files, you will need to configure your system with aws credentials, and have an s3 bucket with read and write permissions for those credentials. Camus2 accepts any of the three official methods of managing credentials. You can find the official documentation here: [AWS Credentials](https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/)
 
----
-//todo, confirm that fetching secrets is baked into camus2
-
 ===
 
 We will be assuming that your simple deployment requires `docker-compose up` to be executed.
@@ -78,12 +75,11 @@ All the location and deployment parameters are defined in camus2.json, and for o
 
 ```
 {
-  "releasesDir": "/deploytest/releases",
+  "deploysDir": "/deploytest/releases",
   "logFile": "/tmp/deploytest/camus2.log",
   "releases": {
     "localdir": "/tmp/tests"
   },
-  "deployContexts": [],
   "deployMode": {
     "proxy": {
       "endPoints": {
@@ -105,7 +101,7 @@ All the location and deployment parameters are defined in camus2.json, and for o
       "remoteStateS3": {
           "just": "s3://{S3 BUCKET FOR TRACKING APP STATE... IF THIS IS MISSING IT WILL TRACK STATE LOCALLY}"
         },
-         "slaveLabel":{
+      "slaveLabel":{
         "label":"myslave"
       },
       "dynamicPortRange": {

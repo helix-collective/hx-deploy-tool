@@ -38,6 +38,10 @@ A simple example is that we use the {{ports.http}} tag to inject the port that w
 
 Additionally, you can specify your own tags in the config file. A run down of the standard tags and how to use the custom tags are detailed in the [template anything](/hx-deploy-tool/docs/userguide/3-reference/3-templateanything) section
 
+### Retrieval of tags from various sources (including secrets)
+
+Camus2 can retrieve json objects from s3 buckets, a local file, or even from AWS Secrets Manager using your specified credentials. This can allow to inject passwords into your release files at the time of deployment.
+
 ## AWS health checks
 
 Additionally, you can connect your AWS autoscaling group and load balancer to a health check endpoint you can specify in the configuration file. This along with deploying in slave mode in an autoscale group, can ensure that faulty applications/services are recycled.
@@ -45,6 +49,7 @@ Additionally, you can connect your AWS autoscaling group and load balancer to a 
 ## Logging and state tracking
 
 Each instance of camus2, whether in slave or master mode, will log its actions and state. This allows you to investigate when there is a problem with a specific deployment.
+
 
 ---
 

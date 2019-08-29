@@ -1,0 +1,5 @@
+deploysDir: /tmp/deployments/releases
+contextCache: /tmp/deployments/cache
+logFile: /tmp/deployments/logs
+releases: 
+  localdir: /tmp/releases

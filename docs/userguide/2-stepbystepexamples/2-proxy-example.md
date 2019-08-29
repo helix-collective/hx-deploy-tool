@@ -40,7 +40,7 @@ services:
 Note the {{ports.http}} in the place of the host port in the docker-compose.yml.
 camus2 will get this parameter from the release config (camus2.json), and inject it into any template with relevant tags, and create a non-template artefact with all tags replaced with values.
 
-To that end, rename the file to docker-compose.yml.tpl so that the tool will recognise it as a template. More detail around the [mustache magic](//todo) available with the tool after the link.
+To that end, rename the file to docker-compose.yml.tpl so that the tool will recognise it as a template. More detail around the [mustache magic](/hx-deploy-tool/docs/userguide/3-reference/3-templateanything) available with the tool after the link.
 
 Our release will also include a release.json with the following:
 
@@ -67,17 +67,15 @@ All the location and deployment parameters are defined in camus2.json, and for o
 
 ```
 {
-  "releasesDir": "/deploytest/releases",
+  "deploysDir": "/deploytest/releases",
   "logFile": "/tmp/deploytest/camus2.log",
   "releases": {
     "localdir": "/tmp/tests"
   },
-  "deployContexts": [],
   "deployMode": {
     "proxy": {
       "endPoints": {
         "main": {
-          "label": "main",
           "serverNames": [
             "main.localhost"
           ],

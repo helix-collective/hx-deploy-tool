@@ -58,7 +58,7 @@ All the location and deployment parameters are defined in camus2.json, and for o
 
 ```
 {
-    "releasesDir": "/tmp/deployments/releases",
+    "deploysDir": "/tmp/deployments/releases",
     "contextCache": "/tmp/deployments/cache",
     "logFile": "/tmp/deployments/logs",
     "releases": {
