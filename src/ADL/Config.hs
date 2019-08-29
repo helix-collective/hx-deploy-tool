@@ -267,7 +267,7 @@ instance AdlValue SslCertPaths where
         <*> parseField "sslCertificateKey"
 
 data ToolConfig = ToolConfig
-    { tc_releasesDir :: ADL.Types.FilePath
+    { tc_deploysDir :: ADL.Types.FilePath
     , tc_contextCache :: ADL.Types.FilePath
     , tc_logFile :: ADL.Types.FilePath
     , tc_letsencryptPrefixDir :: ADL.Types.FilePath
@@ -282,13 +282,13 @@ data ToolConfig = ToolConfig
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
 mkToolConfig :: BlobStoreConfig -> ToolConfig
-mkToolConfig releases = ToolConfig "/opt/releases" "/opt/etc/deployment" "/opt/var/log/camus2.log" "/opt" "/opt/var/www" "camus2cert" "" releases (stringMapFromList []) DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
+mkToolConfig releases = ToolConfig "/opt/deploys" "/opt/config" "/opt/var/log/camus2.log" "/opt" "/opt/var/www" "camus2cert" "" releases (stringMapFromList []) DeployMode_noproxy (Prelude.Just (HealthCheckConfig "/health-check" "/"))
 
 instance AdlValue ToolConfig where
     atype _ = "config.ToolConfig"
     
     jsonGen = genObject
-        [ genField "releasesDir" tc_releasesDir
+        [ genField "deploysDir" tc_deploysDir
         , genField "contextCache" tc_contextCache
         , genField "logFile" tc_logFile
         , genField "letsencryptPrefixDir" tc_letsencryptPrefixDir
@@ -302,8 +302,8 @@ instance AdlValue ToolConfig where
         ]
     
     jsonParser = ToolConfig
-        <$> parseFieldDef "releasesDir" "/opt/releases"
-        <*> parseFieldDef "contextCache" "/opt/etc/deployment"
+        <$> parseFieldDef "deploysDir" "/opt/deploys"
+        <*> parseFieldDef "contextCache" "/opt/config"
         <*> parseFieldDef "logFile" "/opt/var/log/camus2.log"
         <*> parseFieldDef "letsencryptPrefixDir" "/opt"
         <*> parseFieldDef "letsencryptWwwDir" "/opt/var/www"

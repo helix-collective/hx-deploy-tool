@@ -59,8 +59,8 @@ startNoProxy :: T.Text -> IOR ()
 startNoProxy release = do
   scopeInfo ("Selecting active release " <> release) $ do
     tcfg <- getToolConfig
-    let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack release))
-    let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
+    let newReleaseDir = T.unpack (tc_deploysDir tcfg) </> (takeBaseName (T.unpack release))
+    let currentReleaseLink = T.unpack (tc_deploysDir tcfg) </> "current"
 
     -- Fetch the context in case it has been updated
     fetchConfigContext Nothing
@@ -105,8 +105,8 @@ stopDeploy deploy = do
 stopNoProxy :: T.Text -> IOR ()
 stopNoProxy deploy = do
   tcfg <- getToolConfig
-  --let newReleaseDir = T.unpack (tc_releasesDir tcfg) </> (takeBaseName (T.unpack deploy))
-  let currentReleaseLink = T.unpack (tc_releasesDir tcfg) </> "current"
+  --let newReleaseDir = T.unpack (tc_deploysDir tcfg) </> (takeBaseName (T.unpack deploy))
+  let currentReleaseLink = T.unpack (tc_deploysDir tcfg) </> "current"
   currentExists <- liftIO $ doesDirectoryExist currentReleaseLink
   scopeInfo ("Stopping active deployment " <> deploy) $ liftIO $ do
     when currentExists $ do
