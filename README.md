@@ -1,4 +1,4 @@
-# c2
+# Camus 2
 
 A small tool to automate the annoying bits of deployment, making it more likely engineers do deployments right(tm)
 and make deployments a joy. Can work atop docker or 'bare metal'. It pulls config and release zip files from
