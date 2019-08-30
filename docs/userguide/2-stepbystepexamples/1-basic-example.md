@@ -13,7 +13,7 @@ We are going to use camus2 to deploy a release on a single machine, without a pr
 
 In the latest camus2 release package, you will find several useful files to help you get started:
 
-- camus2.json - this file tells camus2 where to look for releases, where to deploy them to, and, in which mode (noproxy/proxy with local state/proxy with remote state)
+- camus2_basic.yaml - this file tells camus2 where to look for releases, where to deploy them to, and, in which mode (noproxy/proxy with local state/proxy with remote state)
 - release.json - include this file in your release archive, it will tell camus2 how to deploy your release.
 - a couple of other files, but lets set them aside until we do a proxy deploy.
 
@@ -27,7 +27,7 @@ Make sure all the locations have the neccesary rights (and exist), and specify t
 
 For our simple deployment, our release archive will include the following docker-compose.yml:
 
-```
+```yaml
 version: "3"
 services:
   web:
@@ -41,7 +41,7 @@ When executed with `docker-compose up`, this will download the Apache http webse
 
 Our release will also include a release.json with the following:
 
-```
+```json
 {
   "prestartCommand": "",
   "startCommand": "docker-compose up",
@@ -49,29 +49,27 @@ Our release will also include a release.json with the following:
   "templates": []
 }
 ```
+
 Take these 2 files, and add them to a .zip archive. Lets call it test1.zip
 You can create test2.zip if you want to test having multiple release versions.
 Put them in a folder where you would expect your releases.
 We will be going with `/tmp/releases`
 
-All the location and deployment parameters are defined in camus2.json, and for our example, looks like this:
+All the location and deployment parameters are defined in camus2.yaml, and for our example, looks like this:
+
+```yaml
+deploysDir: /tmp/deployments/releases
+logFile: /tmp/deployments/logs
+releases:
+  localdir: /tmp/releases
 
 ```
-{
-    "deploysDir": "/tmp/deployments/releases",
-    "contextCache": "/tmp/deployments/cache",
-    "logFile": "/tmp/deployments/logs",
-    "releases": {
-      "localdir": "/tmp/releases"
-    }
-}
-```
 
-The sample camus2.json that is included in the camus2 release has descriptive values, or you can read more about using it in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive)
+You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/docs/userguide/3-reference/1-camus2-config)
 
 Copy the executable binary that you downloaded as part of the latest release to a suitable folder for execution.
 
-The configuration file is expected at ../etc/camus2.json, releative to where you place the binary. You specify an alternate location and name for this file using a `CAMUS2_CONFIG' environment variable.
+The configuration file is expected at ../etc/camus2.(yaml|json), relative to where you place the binary. You can specify an alternate location and name for this file using an `CAMUS2_CONFIG' environment variable. You may have to rename the file, or specify the name of your file in the environment variable if you used the sample file.
 
 ## 1.4. Deploy our test
 

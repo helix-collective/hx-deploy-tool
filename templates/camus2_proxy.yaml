@@ -1,4 +1,4 @@
-releasesDir: /deploytest/releases
+deploysDir: /tmp/deploytest/releases
 logFile: /tmp/deploytest/camus2.log
 releases: 
   localdir: /tmp/tests
@@ -14,8 +14,8 @@ deployMode:
           - test.localhost
         etype: httpOnly
     dynamicPortRange: 
-        v1: 8000
-        v2: 8100
+      v1: 8000
+      v2: 8100
       
     
   

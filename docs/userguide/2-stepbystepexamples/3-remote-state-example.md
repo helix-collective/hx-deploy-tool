@@ -13,7 +13,7 @@ We are going to use camus2 to deploy a release on a single machine, with an auto
 
 In the latest release package, you will find several useful files to help you get started:
 
-- camus2.json - this file tells camus2 where to look for releases, where to deploy them to, and, in which mode (noproxy/proxy with local state/proxy with remote state)
+- camus2_remote-state.yaml - We will use this as a config file to tell camus2 where to look for releases, where to deploy them to, and, in which mode (noproxy/proxy with local state/proxy with remote state)
 - release.json - include this file in your release archive, it will tell camus2 how to deploy your release.
 
 As we will be connecting to s3 for storing our state files, you will need to configure your system with aws credentials, and have an s3 bucket with read and write permissions for those credentials. Camus2 accepts any of the three official methods of managing credentials. You can find the official documentation here: [AWS Credentials](https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/)
@@ -30,7 +30,7 @@ Make sure all the locations have the necesary rights (and exist), and specify th
 
 We will also need a docker-compose.yml, which may look as follows:
 
-```
+```yaml
 version: "3"
 services:
   web:
@@ -41,6 +41,7 @@ services:
     ports:
       - "{{ports.http}}:80"
 ```
+
 Note the {{ports.http}} in the place of the host port in the docker-compose.yml.
 camus2 will get this parameter from the release config (camus2.json), and inject it into any template with relevant tags, and create a non-template artefact with all tags replaced with values.
 
@@ -48,7 +49,7 @@ To that end, rename the file to docker-compose.yml.tpl so that the tool will rec
 
 Our release will also include a release.json with the following:
 
-```
+```json
 {
   "prestartCommand": "",
   "startCommand": "docker-compose up -d",
@@ -71,56 +72,43 @@ To actually deploy a release, we will have to run camus2 in slave mode.
 
 If you were running your application on multiple servers, it would be logical to store the releases in S3 also, but for this example, we will still store it locally.
 
-All the location and deployment parameters are defined in camus2.json, and for our example, looks like this:
+All the location and deployment parameters are defined in camus2.yaml, and for our example, looks like this:
+
+```yaml
+releasesDir: /tmp/deploytest/releases
+logFile: /tmp/deploytest/camus2.log
+releases:
+  localdir: /tmp/tests
+deployMode:
+  proxy:
+    endPoints:
+      main:
+        serverNames:
+        - main.localhost
+        etype: httpOnly
+      test:
+        serverNames:
+        - test.localhost
+        etype: httpOnly
+    remoteStateS3:
+      just: s3://{S3 BUCKET FOR TRACKING APP STATE}
+    slaveLabel:
+      label: myslave
+    dynamicPortRange:
+      v1: 8000
+      v2: 8100
 
 ```
-{
-  "deploysDir": "/deploytest/releases",
-  "logFile": "/tmp/deploytest/camus2.log",
-  "releases": {
-    "localdir": "/tmp/tests"
-  },
-  "deployMode": {
-    "proxy": {
-      "endPoints": {
-        "main": {
-          "label": "main",
-          "serverNames": [
-            "main.localhost"
-          ],
-          "etype": "httpOnly"
-        },
-        "test": {
-          "label": "test",
-          "serverNames": [
-            "test.localhost"
-          ],
-          "etype": "httpOnly"
-        }
-      },
-      "remoteStateS3": {
-          "just": "s3://{S3 BUCKET FOR TRACKING APP STATE... IF THIS IS MISSING IT WILL TRACK STATE LOCALLY}"
-        },
-      "slaveLabel":{
-        "label":"myslave"
-      },
-      "dynamicPortRange": {
-        "v1": 8000,
-        "v2": 8100
-      }
-    }
-  }
-}
 
-```
-This differs from the proxy example only in specifying 2 additional parameters, the location of the remote state store, and a label for the slave. 
+This differs from the proxy example only in specifying 2 additional parameters, the location of the remote state store, and a label for the slave.
+
 The slave label is used for logging, and, if ommitted, camus2 will query the aws api for the ec2 instance name/label, which will make it easy to identify the slave in ec2 from the slave status on s3.
 
-The sample camus2.json that is included in the camus2 release has descriptive values, or you can read more about using it in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive)
+You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/docs/userguide/3-reference/1-camus2-config)
 
 Copy the executable binary that you downloaded as part of the latest camus2 release to a suitable folder for execution.
 
-The configuration file is expected at ../etc/camus2.json, relative to where you place the binary. You can specify an alternate location and name for this file using an `HX_DEPLOY_CONFIG' environment variable.
+The configuration file is expected at ../etc/camus2.(yaml|json), relative to where you place the binary. You can specify an alternate location and name for this file using an `CAMUS2_CONFIG' environment variable. You may have to rename the file, or specify the name of your file in the environment variable if you used the sample file.
 
 ## 1.4. Deploy our test
 

@@ -13,7 +13,7 @@ We are going to use camus2 to deploy a release on a single machine, with an auto
 
 In the latest camus2 release package, you will find several useful files to help you get started:
 
-- camus2.json - this file tells camus2 where to look for releases, where to deploy them to, and, in which mode (noproxy/proxy with local state/proxy with remote state)
+- camus2_proxy.yaml - We will use this as a config file telling camus2 where to look for releases, where to deploy them to, and, in which mode (noproxy/proxy with local state/proxy with remote state)
 - release.json - include this file in your release archive, it will tell camus2 how to deploy your release.
 
 We will be assuming that your simple deployment requires `docker-compose up` to be executed.
@@ -26,7 +26,7 @@ Make sure all the locations have the necesary rights (and exist), and specify th
 
 We will also need a docker-compose.yml, which may look as follows:
 
-```
+```yaml
 version: "3"
 services:
   web:
@@ -37,14 +37,15 @@ services:
     ports:
       - "{{ports.http}}:80"
 ```
+
 Note the {{ports.http}} in the place of the host port in the docker-compose.yml.
-camus2 will get this parameter from the release config (camus2.json), and inject it into any template with relevant tags, and create a non-template artefact with all tags replaced with values.
+camus2 will get this parameter from the release config (camus2.yaml), and inject it into any template with relevant tags, and create a non-template artefact with all tags replaced with values.
 
 To that end, rename the file to docker-compose.yml.tpl so that the tool will recognise it as a template. More detail around the [mustache magic](/hx-deploy-tool/docs/userguide/3-reference/3-templateanything) available with the tool after the link.
 
 Our release will also include a release.json with the following:
 
-```
+```json
 {
   "prestartCommand": "",
   "startCommand": "docker-compose up -d",
@@ -59,51 +60,39 @@ In this scenario, we want to populate the port that nginx will use as a reverse 
 Take these 2 files, and add them to a .zip archive. Lets call it test1.zip
 Create test2.zip with the same files so we can test having different versions deployed.
 Put them in a folder where you would expect your releases.
-We will be going with `/tmp/releases`
+We will be going with `/tmp/tests`
 
 For this example we will create 2 endpoints (_main_ and _test_), and connect our 2 "versions" of our test app to these endpoints.
 
-All the location and deployment parameters are defined in camus2.json, and for our example, looks like this:
+All the location and deployment parameters are defined in camus2.yaml, and for our example, looks like this:
 
-```
-{
-  "deploysDir": "/deploytest/releases",
-  "logFile": "/tmp/deploytest/camus2.log",
-  "releases": {
-    "localdir": "/tmp/tests"
-  },
-  "deployMode": {
-    "proxy": {
-      "endPoints": {
-        "main": {
-          "serverNames": [
-            "main.localhost"
-          ],
-          "etype": "httpOnly"
-        },
-        "test": {
-          "label": "test",
-          "serverNames": [
-            "test.localhost"
-          ],
-          "etype": "httpOnly"
-        }
-      },
-      "dynamicPortRange": {
-        "v1": 8000,
-        "v2": 8100
-      }
-    }
-  }
-}
+```yaml
+deploysDir: /tmp/deploytest/releases
+logFile: /tmp/deploytest/camus2.log
+releases:
+  localdir: /tmp/tests
+deployMode:
+  proxy:
+    endPoints:
+      main:
+        serverNames:
+        - main.localhost
+        etype: httpOnly
+      test:
+        serverNames:
+        - test.localhost
+        etype: httpOnly
+    dynamicPortRange:
+      v1: 8000
+      v2: 8100
 
 ```
 
-The sample camus2.json that is included in the camus2 release has descriptive values, or you can read more about using it in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive)
+You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/docs/userguide/3-reference/1-camus2-config)
 
 Copy the executable binary that you downloaded as part of the latest release to a suitable folder for execution.
 
-The configuration file is expected at ../etc/camus2.json, relative to where you place the binary. You can specify an alternate location and name for this file using an `CAMUS2_CONFIG' environment variable.
+The configuration file is expected at ../etc/camus2.(yaml|json), relative to where you place the binary. You can specify an alternate location and name for this file using an `CAMUS2_CONFIG' environment variable. You may have to rename the file, or specify the name of your file in the environment variable if you used the sample file.
 
 ## 1.4. Deploy our test
 
@@ -164,28 +153,26 @@ You can stop the release by running `./c2 stop test1.zip`
 
 # Advanced concepts
 
-The following modifications to the config (camus2.json) can immediately make the tool more useful:
+The following modifications to the config (camus2.yaml) can immediately make the tool more useful:
 
 ## Storing releases on S3
 
 This can easily be done by replacing
-```
-"releases": {
-    "localdir": "/tmp/tests"
-  },
+```yaml
+releases:
+  localdir: /tmp/tests
 ```
 
 with
 
-```
-"releases": {
-    "S3": "YOUR S3 LOCATION"
-  },
+```yaml
+releases:
+  S3: {{YOUR S3 LOCATION}}
 ```
 
 ## Generating SSL certificates
 
-If you set your endpoint as `"etype": "httpsWithRedirect"`, camus2 will use letsencrypt to generate and attached an ssl certificate.
+If you set your endpoint as `etype: httpsWithRedirect`, camus2 will use letsencrypt to generate and attached an ssl certificate.
 
 ___
 
