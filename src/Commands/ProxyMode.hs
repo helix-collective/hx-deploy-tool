@@ -69,14 +69,14 @@ showStatus showSlaves = do
   where
     printState pm state = do
       T.putStrLn "Endpoints:"
-      for_ (pmEndPoints pm) $ \ep -> do
+      for_ (pmEndPoints pm) $ \(eplabel,ep) -> do
         let etype = case ep_etype ep of
               Ep_httpOnly -> "(" <> T.intercalate ", " [sn <> ":80" |sn <- ep_serverNames ep ] <> ")"
               Ep_httpsWithRedirect _ -> "(" <> T.intercalate ", " [sn <> ":80,443" |sn <- ep_serverNames ep ] <> ")"
-        let connected = case SM.lookup (ep_label ep) (s_connections state) of
+        let connected = case SM.lookup eplabel (s_connections state) of
               Nothing -> "(not connected)"
               Just deployLabel -> deployLabel
-        T.putStrLn ("  " <> ep_label ep <> ": " <> etype <> " -> " <> connected)
+        T.putStrLn ("  " <> eplabel <> ": " <> etype <> " -> " <> connected)
       T.putStrLn ""
       T.putStrLn "Deploys:"
       for_ (SM.elems (s_deploys state)) $ \d -> do

@@ -104,11 +104,11 @@ stateUpdateActions endPointMap oldState newState =
     usesRequiredPort d = elem (d_port d) requiredPorts
     requiredPorts =map d_port (M.elems newDeploys)
 
-getEndpointDeploy :: M.Map EndPointLabel EndPoint -> State -> (EndPointLabel,DeployLabel) -> Maybe (EndPoint,Deploy)
+getEndpointDeploy :: M.Map EndPointLabel EndPoint -> State -> (EndPointLabel,DeployLabel) -> Maybe (LabelledEndpoint,Deploy)
 getEndpointDeploy endPointMap state (eplabel, dlabel) = do
-  endPoint <- find (\ep -> ep_label ep == eplabel)  endPointMap
+  endPoint <- M.lookup eplabel endPointMap
   deploy <- find (\d -> d_label d == dlabel) (SM.toMap (s_deploys state))
-  return (endPoint,deploy)
+  return ((eplabel,endPoint),deploy)
 
 -- | Execute the effects of a single action action
 executeAction :: StateAction -> IOR ()
@@ -147,10 +147,10 @@ executeAction (SetEndPoints liveEndPoints) = do
     callCommandInDir proxyDir "docker-compose up -d"
     callCommandInDir proxyDir "docker kill --signal=SIGHUP frontendproxy"
     where
-      maybeEndpoints :: SM.StringMap EndPoint -> [(EndPoint,Deploy)] -> [(EndPoint,Maybe Deploy)]
+      maybeEndpoints :: SM.StringMap EndPoint -> [(LabelledEndpoint,Deploy)] -> [(EndPoint,Maybe Deploy)]
       maybeEndpoints eps liveEndPoints = [ (ep,findDeploy label) | (label,ep) <- SM.toList eps]
         where
-          findDeploy label = fmap snd (find ( (==label) . ep_label . fst) liveEndPoints)
+          findDeploy label = fmap snd (find ((==label). fst . fst) liveEndPoints)
 
 getState :: IOR State
 getState = do

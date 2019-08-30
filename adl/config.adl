@@ -82,7 +82,6 @@ union MachineLabel {
 
 // A proxy exposed endpoint
 struct EndPoint {
-  EndPointLabel label;
   Vector<String> serverNames;
   EndPointType etype;
 };
