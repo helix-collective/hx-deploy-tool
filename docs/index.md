@@ -15,7 +15,7 @@ Below are some useful articles to get you started:
 <p>
 <ul>
   {% for page in site.pages %}
-    {% if page.url != '/assets/css/style.css' or page.url !='/docs/' %}
+    {% if page.url != '/assets/css/style.css' and page.url !='/docs/' %}
     <li>
       <a href="/hx-deploy-tool{{ page.url }}">{{ page.title }}</a>
     </li>
