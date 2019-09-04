@@ -152,7 +152,7 @@ checkReleaseExists release = do
   bs <- releaseBlobStore
   exists <- liftIO $ bs_exists bs release
   when (not exists) $ do
-    error ("Release " <> T.unpack release <> " does not exist in S3")
+    error ("Release " <> T.unpack release <> " does not exist in Release store at " <> T.unpack (bs_label bs ))
   return ()
 
 loadMergedContext :: ToolConfig -> IO JS.Value
