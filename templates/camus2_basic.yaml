@@ -1,4 +1,21 @@
+# The camus2 configuration file
+#
+# The configuration can be supplied in yaml or json, and needs to
+# adhere to a strict format. For more information, refer to 
+# https://github.com/helix-collective/hx-deploy-tool/blob/master/adl/config.adl
+# where the ADL spec is defined, or have a look at the documented examples
+# https://helix-collective.github.io/hx-deploy-tool/
+#
+#
+# The following is the configuration for the basic deployment example:
+#
+# This location is where the release archives will be unpacked.
+# It also serves as a working directory, and will house the nginx container,
+# as well as state.json. Camus2 needs r/w/d rights.
 deploysDir: /tmp/deployments/releases
-logFile: /tmp/deployments/logs
+# The log file serves to store the camus2 logs only, the log management of the
+# app you are deploying needs to be managed separately.
+logFile: /tmp/deployments/logs.txt
+# The location where camus2 will look for your release archives
 releases: 
   localdir: /tmp/releases
