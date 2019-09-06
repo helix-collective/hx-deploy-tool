@@ -17,6 +17,7 @@ module ADL.Config(
 
 import ADL.Core
 import Control.Applicative( (<$>), (<*>), (<|>) )
+import Prelude( ($) )
 import qualified ADL.Sys.Types
 import qualified ADL.Types
 import qualified Data.Aeson as JS
@@ -39,10 +40,10 @@ instance AdlValue BlobStoreConfig where
         BlobStoreConfig_localdir v -> genUnionValue "localdir" v
         )
     
-    jsonParser
-        =   parseUnionValue "s3" BlobStoreConfig_s3
-        <|> parseUnionValue "localdir" BlobStoreConfig_localdir
-        <|> parseFail "expected a BlobStoreConfig"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "s3" ->  parseUnionValue BlobStoreConfig_s3
+        "localdir" ->  parseUnionValue BlobStoreConfig_localdir
+        _ -> parseFail "expected a discriminator for BlobStoreConfig (s3,localdir)" 
 
 data DeployMode
     = DeployMode_noproxy
@@ -57,10 +58,10 @@ instance AdlValue DeployMode where
         DeployMode_proxy v -> genUnionValue "proxy" v
         )
     
-    jsonParser
-        =   parseUnionVoid "noproxy" DeployMode_noproxy
-        <|> parseUnionValue "proxy" DeployMode_proxy
-        <|> parseFail "expected a DeployMode"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "noproxy" -> parseUnionVoid DeployMode_noproxy
+        "proxy" ->  parseUnionValue DeployMode_proxy
+        _ -> parseFail "expected a discriminator for DeployMode (noproxy,proxy)" 
 
 data EndPoint = EndPoint
     { ep_serverNames :: [T.Text]
@@ -96,10 +97,10 @@ instance AdlValue EndPointType where
         Ep_httpsWithRedirect v -> genUnionValue "httpsWithRedirect" v
         )
     
-    jsonParser
-        =   parseUnionVoid "httpOnly" Ep_httpOnly
-        <|> parseUnionValue "httpsWithRedirect" Ep_httpsWithRedirect
-        <|> parseFail "expected a EndPointType"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "httpOnly" -> parseUnionVoid Ep_httpOnly
+        "httpsWithRedirect" ->  parseUnionValue Ep_httpsWithRedirect
+        _ -> parseFail "expected a discriminator for EndPointType (httpOnly,httpsWithRedirect)" 
 
 data HealthCheckConfig = HealthCheckConfig
     { hc_incomingPath :: T.Text
@@ -137,11 +138,11 @@ instance AdlValue JsonSource where
         Jsrc_awsSecretArn v -> genUnionValue "awsSecretArn" v
         )
     
-    jsonParser
-        =   parseUnionValue "file" Jsrc_file
-        <|> parseUnionValue "s3" Jsrc_s3
-        <|> parseUnionValue "awsSecretArn" Jsrc_awsSecretArn
-        <|> parseFail "expected a JsonSource"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "file" ->  parseUnionValue Jsrc_file
+        "s3" ->  parseUnionValue Jsrc_s3
+        "awsSecretArn" ->  parseUnionValue Jsrc_awsSecretArn
+        _ -> parseFail "expected a discriminator for JsonSource (file,s3,awsSecretArn)" 
 
 data LetsEncryptConfig = LetsEncryptConfig
     { lec_certbotPath :: T.Text
@@ -189,10 +190,10 @@ instance AdlValue MachineLabel where
         MachineLabel_ec2InstanceId -> genUnionVoid "ec2InstanceId"
         )
     
-    jsonParser
-        =   parseUnionValue "label" MachineLabel_label
-        <|> parseUnionVoid "ec2InstanceId" MachineLabel_ec2InstanceId
-        <|> parseFail "expected a MachineLabel"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "label" ->  parseUnionValue MachineLabel_label
+        "ec2InstanceId" -> parseUnionVoid MachineLabel_ec2InstanceId
+        _ -> parseFail "expected a discriminator for MachineLabel (label,ec2InstanceId)" 
 
 data ProxyModeConfig = ProxyModeConfig
     { pm_endPoints :: (ADL.Types.StringKeyMap ADL.Types.EndPointLabel EndPoint)
@@ -237,10 +238,10 @@ instance AdlValue SslCertMode where
         Scm_explicit v -> genUnionValue "explicit" v
         )
     
-    jsonParser
-        =   parseUnionVoid "generated" Scm_generated
-        <|> parseUnionValue "explicit" Scm_explicit
-        <|> parseFail "expected a SslCertMode"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "generated" -> parseUnionVoid Scm_generated
+        "explicit" ->  parseUnionValue Scm_explicit
+        _ -> parseFail "expected a discriminator for SslCertMode (generated,explicit)" 
 
 data SslCertPaths = SslCertPaths
     { scp_sslCertificate :: ADL.Types.FilePath
@@ -324,7 +325,7 @@ instance AdlValue Verbosity where
         Verbosity_noisy -> genUnionVoid "noisy"
         )
     
-    jsonParser
-        =   parseUnionVoid "quiet" Verbosity_quiet
-        <|> parseUnionVoid "noisy" Verbosity_noisy
-        <|> parseFail "expected a Verbosity"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "quiet" -> parseUnionVoid Verbosity_quiet
+        "noisy" -> parseUnionVoid Verbosity_noisy
+        _ -> parseFail "expected a discriminator for Verbosity (quiet,noisy)" 

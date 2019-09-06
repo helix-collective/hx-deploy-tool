@@ -211,7 +211,7 @@ decodeAdlParseResult :: forall a . (AdlValue a) => T.Text -> ParseResult a -> Ei
 decodeAdlParseResult from (ParseFailure e ctx) = Left
   (  "Unable to parse a value of ADL type "
   <> atype (Proxy :: Proxy a)
-  <> from <> ": "
+  <> " " <> from <> ": "
   <> e <> " at " <> textFromParseContext ctx
   )
 decodeAdlParseResult _ (ParseSuccess a) = Right a
