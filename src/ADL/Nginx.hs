@@ -9,6 +9,7 @@ module ADL.Nginx(
 
 import ADL.Core
 import Control.Applicative( (<$>), (<*>), (<|>) )
+import Prelude( ($) )
 import qualified ADL.Core.Nullable
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
@@ -51,10 +52,10 @@ instance AdlValue NginxEndPoint where
         Ne_https v -> genUnionValue "https" v
         )
     
-    jsonParser
-        =   parseUnionValue "http" Ne_http
-        <|> parseUnionValue "https" Ne_https
-        <|> parseFail "expected a NginxEndPoint"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "http" ->  parseUnionValue Ne_http
+        "https" ->  parseUnionValue Ne_https
+        _ -> parseFail "expected a discriminator for NginxEndPoint (http,https)" 
 
 data NginxHealthCheck = NginxHealthCheck
     { nhc_incomingPath :: T.Text

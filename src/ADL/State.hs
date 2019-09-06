@@ -8,6 +8,7 @@ module ADL.State(
 
 import ADL.Core
 import Control.Applicative( (<$>), (<*>), (<|>) )
+import Prelude( ($) )
 import qualified ADL.Types
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
@@ -74,10 +75,10 @@ instance AdlValue SlaveStatus where
         SlaveStatus_error v -> genUnionValue "error" v
         )
     
-    jsonParser
-        =   parseUnionVoid "ok" SlaveStatus_ok
-        <|> parseUnionValue "error" SlaveStatus_error
-        <|> parseFail "expected a SlaveStatus"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "ok" -> parseUnionVoid SlaveStatus_ok
+        "error" ->  parseUnionValue SlaveStatus_error
+        _ -> parseFail "expected a discriminator for SlaveStatus (ok,error)" 
 
 data State = State
     { s_deploys :: (ADL.Types.StringKeyMap ADL.Types.DeployLabel Deploy)
