@@ -166,7 +166,7 @@ slaveUpdate_ = do
   scopeInfo ("Fetching state from " <> masterS3Path remoteStateS3) $ do
     state <- sa_get (remoteState remoteStateS3)
     label <- getSlaveLabel
-    myIp <- getSlaveIP <$> (liftIO getNetworkInterfaces)
+    myIp <- getSlaveIP (pm_slaveSSHInterfaceName pm) <$> (liftIO getNetworkInterfaces)
     myHost <-  (liftIO getHostName)
     -- let longlabel = label <> "and IP: " <>  myIp
     handle (ehandler remoteStateS3 label myIp myHost) $ do
@@ -180,8 +180,8 @@ slaveUpdate_ = do
       liftIO $ throwIO e
 
 
-getSlaveIP :: [NetworkInterface] -> T.Text
-getSlaveIP =  T.pack . show . ipv4 . head . filter (\x -> name x == "vethcf0db70" )
+getSlaveIP :: T.Text -> [NetworkInterface]  -> T.Text
+getSlaveIP interfaceName interfaces = (T.pack . show . ipv4 . head . filter (\x -> name x == (T.unpack interfaceName) )) interfaces
 
 -- Flash slave state from S3 that is more than 5 minutes old
 slaveFlush :: IOR ()
