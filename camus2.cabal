@@ -63,12 +63,14 @@ executable c2
                      , exceptions >= 0.8.3 && < 0.11
                      , filepath >= 1.4 && < 1.5
                      , file-embed >= 0.0.10.1 && < 0.0.12
+                     , hostname == 1.0
                      , http-types >= 0.9.1 && < 0.13
                      , http-client >= 0.5.11 && < 0.6
                      , lens >= 4.15 && < 4.18
                      , mustache >= 2.0 && < 2.4
                      , mtl >= 2.2.2 && < 2.3
                      , network-uri >= 2.6 && < 2.7
+                     , network-info >= 0.2.0.10 && < 0.3
                      , path >= 0.5 && < 0.7
                      , process >= 1.4.3 && < 1.7
                      , resourcet >= 1.1.9 && < 1.3

@@ -44,6 +44,8 @@ import Data.Foldable(for_)
 import Data.Monoid
 import Data.Word
 import Data.Time.Clock(addUTCTime,diffUTCTime,getCurrentTime)
+import Network.HostName
+import Network.Info      (getNetworkInterfaces, NetworkInterface, name, ipv4)
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory, removeDirectoryRecursive)
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Process(callCommand)
@@ -164,15 +166,22 @@ slaveUpdate_ = do
   scopeInfo ("Fetching state from " <> masterS3Path remoteStateS3) $ do
     state <- sa_get (remoteState remoteStateS3)
     label <- getSlaveLabel
-    handle (ehandler remoteStateS3 label) $ do
+    myIp <- getSlaveIP <$> (liftIO getNetworkInterfaces)
+    myHost <-  (liftIO getHostName)
+    -- let longlabel = label <> "and IP: " <>  myIp
+    handle (ehandler remoteStateS3 label myIp myHost) $ do
       sa_update localState (const state)
-      writeSlaveState remoteStateS3 label (SlaveState SlaveStatus_ok state)
+      writeSlaveState remoteStateS3 label (SlaveState SlaveStatus_ok myIp (T.pack myHost) state)
   where
-    ehandler remoteStateS3 label e = do
+    ehandler remoteStateS3 label  myIp myHost e = do
       let emsg = T.pack (show (e::SomeException))
       existingState <- sa_get localState
-      writeSlaveState remoteStateS3 label (SlaveState (SlaveStatus_error emsg) existingState)
+      writeSlaveState remoteStateS3 label (SlaveState (SlaveStatus_error emsg) myIp (T.pack myHost) existingState)
       liftIO $ throwIO e
+
+
+getSlaveIP :: [NetworkInterface] -> T.Text
+getSlaveIP =  T.pack . show . ipv4 . head . filter (\x -> name x == "vethcf0db70" )
 
 -- Flash slave state from S3 that is more than 5 minutes old
 slaveFlush :: IOR ()

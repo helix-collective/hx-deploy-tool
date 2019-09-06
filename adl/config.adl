@@ -60,6 +60,11 @@ struct ProxyModeConfig {
     /// How we generate identifiers for slave machines
     MachineLabel slaveLabel = "ec2InstanceId";
 
+    // The network interface for retrieving the IP of the slave
+    // This will be logged to the remote state and allow easy identification and location of slave server if required
+    // In AWS interface defaults to eth0, this allows for other interfaces to be configured for ssh
+    String slaveSSHInterfaceName = "eth0";
+
     /// The mustache template to used be for the proxy nginx configuration
     /// If not provided the builtin template will be used.
     Maybe<FilePath> nginxConfTemplatePath = "nothing";
