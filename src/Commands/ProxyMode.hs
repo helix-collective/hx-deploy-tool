@@ -56,18 +56,22 @@ showStatus :: Bool -> IOR ()
 showStatus showSlaves = do
   pm <- getProxyModeConfig
   state <- getState
+  liftIO $ T.putStrLn "---------------------MASTER-------------------------------------------"
   liftIO $ printState pm state
   when showSlaves $ do
     slaveStates <- getSlaveStates
+    liftIO $ T.putStrLn "---------------------SLAVES-------------------------------------------"
     liftIO $ for_ slaveStates $ \(label,slaveState) -> do
-      T.putStrLn "----------------------------------------------------------------------"
       T.putStrLn ("Slave: " <> label)
+      T.putStrLn ("Slave IP: " <> (slaveState_slaveIP (lm_value slaveState)))
+      T.putStrLn ("Slave Hostname: " <> (slaveState_slaveHostName (lm_value slaveState)))
       case slaveState_status (lm_value slaveState) of
         SlaveStatus_ok -> T.putStrLn ("Status: OK")
         SlaveStatus_error emsg -> T.putStrLn ("Status: Error (" <> emsg <> ")")
       for_ (lm_modifiedAt slaveState) $ \lm ->
          T.putStrLn ("Updated: " <> (T.pack (show lm)))
       printState pm (slaveState_state (lm_value slaveState))
+      T.putStrLn "----------------------------------------------------------------------"
   where
     printState pm state = do
       T.putStrLn "Endpoints:"

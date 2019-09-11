@@ -6,6 +6,7 @@ module Util.Aws.S3(
   downloadFileFrom,
   extendObjectKey,
   listObjects,
+  listKeyPrefixes,
   objectExists,
   readObject,
   splitPath,
@@ -91,6 +92,15 @@ listObjects env bucketName (S3.ObjectKey prefix) = do
       objects <- runConduit (paginate listObjectReq .| CL.foldMap (view S3.lorsContents))
       let sortedObjects = reverse (sortOn (view S3.oLastModified) objects)
       return (catMaybes (map (\o -> view S3.oKey o ^? S3.keyName '/') sortedObjects))
+
+  -- This is used in conjunction with list obects to return a list of prefixes for all objects.
+listKeyPrefixes :: Env -> S3.BucketName -> S3.ObjectKey -> IO [T.Text]
+listKeyPrefixes env bucketName (S3.ObjectKey prefix) = do
+    let listObjectReq = set S3.loPrefix (Just prefix) (S3.listObjects bucketName)
+    runResourceT . runAWST env $ do
+      objects <- runConduit (paginate listObjectReq .| CL.foldMap (view S3.lorsContents))
+      let sortedObjects = reverse (sortOn (view S3.oLastModified) objects)
+      return (catMaybes (map (\o -> view S3.oKey o ^? S3.keyPrefix '/') sortedObjects))
 
 objectExists :: Env -> S3.BucketName -> S3.ObjectKey -> IO Bool
 objectExists env bucketName objectKey = do

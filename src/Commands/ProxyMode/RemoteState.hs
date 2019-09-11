@@ -64,13 +64,13 @@ getSlaves remoteStateS3 = do
     getSlaveLabels :: Env -> IOR [T.Text]
     getSlaveLabels env = do
       let (bucketName,objectKey) = S3.splitPath (remoteStateS3 <> "/slaves")
-      keys <- liftIO $ S3.listObjects env bucketName objectKey
+      keys <- liftIO $ S3.listKeyPrefixes env bucketName objectKey
       let labels = catMaybes (map parseSlaveLabel keys)
       return labels
 
     -- extract label from ".../label/state.json"
     parseSlaveLabel :: T.Text -> Maybe T.Text
-    parseSlaveLabel key = case T.stripSuffix "/state.json" key of
+    parseSlaveLabel key = case T.stripPrefix "/slaves/" key of
       Nothing -> Nothing
       (Just s) -> Just (T.takeWhileEnd (/='/') s)
 
