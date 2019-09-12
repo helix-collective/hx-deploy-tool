@@ -172,7 +172,6 @@ slaveUpdate_ = do
     label <- getSlaveLabel
     myIp <- getSlaveIP (pm_slaveSSHInterfaceName pm) <$> (liftIO getNetworkInterfaces)
     myHost <-  (liftIO getHostName)
-    -- let longlabel = label <> "and IP: " <>  myIp
     handle (ehandler remoteStateS3 label myIp myHost) $ do
       sa_update localState (const state)
       writeSlaveState remoteStateS3 label (SlaveState SlaveStatus_ok myIp (T.pack myHost) state)
