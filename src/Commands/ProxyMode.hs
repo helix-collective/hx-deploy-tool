@@ -182,9 +182,16 @@ slaveUpdate_ = do
       writeSlaveState remoteStateS3 label (SlaveState (SlaveStatus_error emsg) myIp (T.pack myHost) existingState)
       liftIO $ throwIO e
 
+filterNetworkInterfaces ::  T.Text -> [NetworkInterface] ->  [NetworkInterface]
+filterNetworkInterfaces interfaceName interfaces = filter (\x -> name x == (T.unpack interfaceName) ) interfaces
 
 getSlaveIP :: T.Text -> [NetworkInterface]  -> T.Text
-getSlaveIP interfaceName interfaces = (T.pack . show . ipv4 . head . filter (\x -> name x == (T.unpack interfaceName) )) interfaces
+getSlaveIP interfaceName interfaces = do
+  case interfaceByName of
+    [] -> (T.pack "Network Interface not found" )
+    _ -> (( T.pack . show . ipv4 . head ) interfaceByName)
+    where interfaceByName = filterNetworkInterfaces interfaceName interfaces 
+    
 
 -- Flash slave state from S3 that is more than 5 minutes old
 slaveFlush :: IOR ()
