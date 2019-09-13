@@ -63,8 +63,8 @@ showStatus showSlaves = do
     liftIO $ T.putStrLn "---------------------SLAVES-------------------------------------------"
     liftIO $ for_ slaveStates $ \(label,slaveState) -> do
       T.putStrLn ("Slave: " <> label)
-      T.putStrLn ("Slave IP: " <> (slaveState_slaveIP (lm_value slaveState)))
-      T.putStrLn ("Slave Hostname: " <> (slaveState_slaveHostName (lm_value slaveState)))
+      T.putStrLn ("Slave IP: " <> (slaveState_ipAddress (lm_value slaveState)))
+      T.putStrLn ("Slave Hostname: " <> (slaveState_hostName (lm_value slaveState)))
       case slaveState_status (lm_value slaveState) of
         SlaveStatus_ok -> T.putStrLn ("Status: OK")
         SlaveStatus_error emsg -> T.putStrLn ("Status: Error (" <> emsg <> ")")
@@ -170,7 +170,7 @@ slaveUpdate_ = do
   scopeInfo ("Fetching state from " <> masterS3Path remoteStateS3) $ do
     state <- sa_get (remoteState remoteStateS3)
     label <- getSlaveLabel
-    myIp <- getSlaveIP (pm_slaveSSHInterfaceName pm) <$> (liftIO getNetworkInterfaces)
+    myIp <- getSlaveIP (pm_slaveInterfaceName pm) <$> (liftIO getNetworkInterfaces)
     myHost <-  (liftIO getHostName)
     handle (ehandler remoteStateS3 label myIp myHost) $ do
       sa_update localState (const state)
@@ -182,16 +182,17 @@ slaveUpdate_ = do
       writeSlaveState remoteStateS3 label (SlaveState (SlaveStatus_error emsg) myIp (T.pack myHost) existingState)
       liftIO $ throwIO e
 
-filterNetworkInterfaces ::  T.Text -> [NetworkInterface] ->  [NetworkInterface]
-filterNetworkInterfaces interfaceName interfaces = filter (\x -> name x == (T.unpack interfaceName) ) interfaces
 
 getSlaveIP :: T.Text -> [NetworkInterface]  -> T.Text
 getSlaveIP interfaceName interfaces = do
   case interfaceByName of
-    [] -> (T.pack "Network Interface not found" )
-    _ -> (( T.pack . show . ipv4 . head ) interfaceByName)
-    where interfaceByName = filterNetworkInterfaces interfaceName interfaces 
-    
+    interface:_ -> ( T.pack . show . ipv4 ) interface
+    _ -> (T.pack "Network Interface " <> interfaceName <> "not found" )
+    where 
+      interfaceByName = filterNetworkInterfaces interfaceName interfaces 
+
+      filterNetworkInterfaces ::  T.Text -> [NetworkInterface] ->  [NetworkInterface]
+      filterNetworkInterfaces interfaceName interfaces = filter (\x -> name x == (T.unpack interfaceName) ) interfaces    
 
 -- Flash slave state from S3 that is more than 5 minutes old
 slaveFlush :: IOR ()

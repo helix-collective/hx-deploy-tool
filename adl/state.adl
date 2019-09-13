@@ -24,10 +24,10 @@ struct SlaveState {
   SlaveStatus status;
   
   // The IP of the slave on which camus2 is running
-  String slaveIP;
+  String ipAddress;
 
   //Host name of the slave
-  String slaveHostName;
+  String hostName;
 
   // The state of the slave after the last succesful state change
   State state;

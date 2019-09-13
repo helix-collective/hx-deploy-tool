@@ -200,7 +200,7 @@ data ProxyModeConfig = ProxyModeConfig
     , pm_remoteStateS3 :: (ADL.Sys.Types.Maybe ADL.Types.S3Path)
     , pm_dynamicPortRange :: (ADL.Sys.Types.Pair Data.Word.Word32 Data.Word.Word32)
     , pm_slaveLabel :: MachineLabel
-    , pm_slaveSSHInterfaceName :: T.Text
+    , pm_slaveInterfaceName :: T.Text
     , pm_nginxConfTemplatePath :: (ADL.Sys.Types.Maybe ADL.Types.FilePath)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
@@ -216,7 +216,7 @@ instance AdlValue ProxyModeConfig where
         , genField "remoteStateS3" pm_remoteStateS3
         , genField "dynamicPortRange" pm_dynamicPortRange
         , genField "slaveLabel" pm_slaveLabel
-        , genField "slaveSSHInterfaceName" pm_slaveSSHInterfaceName
+        , genField "slaveInterfaceName" pm_slaveInterfaceName
         , genField "nginxConfTemplatePath" pm_nginxConfTemplatePath
         ]
     
@@ -225,7 +225,7 @@ instance AdlValue ProxyModeConfig where
         <*> parseFieldDef "remoteStateS3" Prelude.Nothing
         <*> parseFieldDef "dynamicPortRange" ((,) 8000 8100)
         <*> parseFieldDef "slaveLabel" MachineLabel_ec2InstanceId
-        <*> parseFieldDef "slaveSSHInterfaceName" "eth0"
+        <*> parseFieldDef "slaveInterfaceName" "eth0"
         <*> parseFieldDef "nginxConfTemplatePath" Prelude.Nothing
 
 data SslCertMode
