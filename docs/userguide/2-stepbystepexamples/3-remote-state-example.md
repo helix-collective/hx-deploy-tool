@@ -24,7 +24,7 @@ We will be assuming that your simple deployment requires `docker-compose up` to 
 This means that you need to have docker-compose installed on your machine, and that it needs access to whichever docker repository your image is stored in.
 
 You will also need a location to store your release archives, your logs, and a location where the releases will be unpacked.
-Make sure all the locations have the necesary rights (and exist), and specify them in the config file.
+Make sure all the locations have the necessary rights (and exist), and specify them in the config file.
 
 ## 1.3. Prepare the configuration files
 
@@ -211,11 +211,11 @@ however,  `test.localhost:8001` should still show an error page.
 
 If you are in production, you don't want to log into every slave to run camus2, so, if you baked it into your server image, you can run it with `./c2 slave-update --repeat n` to have it running continually, and verifying the slave is up to date every n seconds.
 
-Lets run `./c2 slave-update --repeat 120` to run camus2 in slave mode, checking state every 120 seconds. This should allow us to start and connect in master mode inbetween slave updates, and demonstrate that the slave will do all the necessary steps to bring the slave state equal to master.
+Lets run `./c2 slave-update --repeat 120` to run camus2 in slave mode, checking state every 120 seconds. This should allow us to start and connect in master mode in between slave updates, and demonstrate that the slave will do all the necessary steps to bring the slave state equal to master.
 
 Open another terminal, and we will deploy the second test in master mode. Wait for the slave to say 'Fetching state...', and then run `./c2 start test2.zip`, `./c2 connect test test2.zip` and `./c2 status --show-slaves` keep an eye on the slave terminal, which will unpack and run test2, and then connect it to the test endpoint when it runs again.
 
-Your status output should look as follows, with the slave not yet runnng test2.zip:
+Your status output should look as follows, with the slave not yet running test2.zip:
 
 ```
 Endpoints:

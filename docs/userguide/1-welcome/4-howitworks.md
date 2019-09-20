@@ -82,7 +82,7 @@ Each slave will log its own actions and results locally, and update the state st
 
 All instances of camus2, whether master or slave, are expected to have identical configurations, with its execution with `slave-update` denoting that it should treat the config differently.
 
-SSL termination isn't supported for autoscaling as a loadbalancer is expected to separate the slaves from traffic, and to manage ssl termination.
+SSL termination isn't supported for autoscaling as a load balancer is expected to separate the slaves from traffic, and to manage ssl termination.
 
 ---
 

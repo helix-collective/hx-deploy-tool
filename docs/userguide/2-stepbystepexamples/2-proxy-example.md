@@ -20,7 +20,7 @@ We will be assuming that your simple deployment requires `docker-compose up` to 
 This means that you need to have docker-compose installed on your machine, and that it needs access to whichever docker repository your image is stored in.
 
 You will also need a location to store your release archives, your logs, and a location where the releases will be unpacked.
-Make sure all the locations have the necesary rights (and exist), and specify them in the config file.
+Make sure all the locations have the necessary rights (and exist), and specify them in the config file.
 
 ## 1.3. Prepare the configuration files
 
@@ -137,7 +137,7 @@ Deploys:
   test2.zip: (localhost:8001)
 ```
 
-You can again use the docker cli to confirm the nginx containter is now running. If you want to permanently stop the nginx container you will have to do so manually, however, any new proxy configurations that need to be applied and/or connected will result in the container being restarted or rebuilt if necessary.
+You can again use the docker cli to confirm the nginx container is now running. If you want to permanently stop the nginx container you will have to do so manually, however, any new proxy configurations that need to be applied and/or connected will result in the container being restarted or rebuilt if necessary.
 
 Visiting `main.localhost:8000` or `test.localhost:8001` in your browser should now show the Apache test message:
 

@@ -21,7 +21,7 @@ We will be assuming that your simple deployment requires `docker-compose up` to 
 This means that you need to have docker-compose installed on your machine, and that it needs access to whichever docker repository your image is stored in.
 
 You will also need a location to store your release archives, your logs, and a location where the releases will be unpacked.
-Make sure all the locations have the neccesary rights (and exist), and specify them in the config file.
+Make sure all the locations have the necessary rights (and exist), and specify them in the config file.
 
 ## 1.3. Prepare the configuration files
 
