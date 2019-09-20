@@ -1,5 +1,5 @@
 {
-    "releasesDir" : "--MACHINE_ROOT--/opt/releases",
+    "deploysDir" : "--MACHINE_ROOT--/opt/deploys",
     "contextCache" : "--MACHINE_ROOT--/opt/etc/configsCache",
     "logFile" : "--MACHINE_ROOT--/opt/camus2.log",
     "releases" : {
