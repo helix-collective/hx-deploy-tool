@@ -3,6 +3,7 @@ module config
 import adlc.config.haskell.HaskellFieldPrefix;
 
 annotation JsonSource HaskellFieldPrefix "jsrc_";
+annotation DynamicJsonSource HaskellFieldPrefix "djsrc_";
 
 annotation EndPoint HaskellFieldPrefix "ep_";
 annotation EndPointType HaskellFieldPrefix "ep_";

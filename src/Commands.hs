@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, Rank2Types #-}
 module Commands where
 
+import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified ADL.Core.StringMap as SM
 import qualified Data.Aeson as JS
 import qualified Data.ByteString.Lazy as LBS
@@ -15,8 +17,10 @@ import qualified Network.AWS.ECR as ECR
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
 import qualified Commands.ProxyMode as P
+import qualified ADL.Sys.Types as ST
 
-import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..))
+import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), DynamicConfigOptions(..), DynamicJsonSource(..), JsonSource(..))
+import ADL.Types(DynamicConfigName, StringKeyMap, DynamicConfigMode)
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile')
 import Blobs(releaseBlobStore, BlobStore(..))
@@ -43,7 +47,7 @@ import System.IO(stdout, withFile, hIsEOF, IOMode(..))
 import System.Process(callCommand)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
-import Util(unpackRelease, fetchConfigContext)
+import Util(unpackRelease, fetchConfigContext, jsrcLabel)
 import Util.Aws(mkAwsEnv)
 import Commands.ProxyMode.LocalState(nginxConfTemplate)
 
