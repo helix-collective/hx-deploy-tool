@@ -39,6 +39,8 @@ main = do
     ["list-releases"]                           -> runWithConfig       (C.listReleases)
     ["show-log"]                                -> runWithConfig       (C.showLog)
     ["show-default-nginx-config"]               -> C.showDefaultNginxConfig
+    ["show-config-modes"]                       -> runWithConfig (C.listConfigsModes)
+    ["show-config-modes", dynamicConfigName]    -> runWithConfig (C.showConfigModes (T.pack dynamicConfigName))
 
     ["fetch-context"]                           -> runWithConfigAndLog (U.fetchConfigContext Nothing)
     ["fetch-context","--retry"]                 -> runWithConfigAndLog (U.fetchConfigContext (Just 10))

@@ -122,7 +122,7 @@ stopNoProxy deploy = do
 
   scopeInfo ("Removing Symlink for deployment") $ liftIO $ do
     when currentExists $ removeLink currentReleaseLink
-    
+
 
 -- List the releases available for installation
 listReleases :: IOR ()
@@ -176,3 +176,44 @@ showLog = do
 showDefaultNginxConfig :: IO ()
 showDefaultNginxConfig = do
   T.putStrLn nginxConfTemplate
+
+type DynamicConfigSources = (StringKeyMap DynamicConfigName DynamicJsonSource)
+
+dynamicJsonSourceToSet :: DynamicJsonSource -> ST.Set DynamicConfigMode
+dynamicJsonSourceToSet x = M.keysSet (SM.toMap( djsrc_modes x))
+
+listDynamicConfigOptions :: DynamicConfigSources -> DynamicConfigOptions
+listDynamicConfigOptions dcsrcs = SM.fromList (M.toList (M.map dynamicJsonSourceToSet (SM.toMap dcsrcs)))
+
+getConfigOptionsTextPart2 :: (ST.Set DynamicConfigMode) -> T.Text
+getConfigOptionsTextPart2 setdcm = T.intercalate (T.pack ", ") (S.toList setdcm)
+
+getConfigOptionsTextPart :: (T.Text, ST.Set DynamicConfigMode) -> T.Text
+getConfigOptionsTextPart tupl = T.intercalate (T.pack ": ") [T.justifyLeft 10 ' ' (fst tupl), getConfigOptionsTextPart2 (snd tupl)]
+
+getConfigOptionsText :: DynamicConfigOptions -> [T.Text]
+getConfigOptionsText dcopts = map getConfigOptionsTextPart (SM.toList dcopts)
+
+
+printDynamicConfigOptions :: DynamicConfigOptions -> IO ()
+printDynamicConfigOptions dcopts = liftIO $ do
+  mapM_ T.putStrLn (getConfigOptionsText dcopts)
+
+
+
+filterByConfigName :: DynamicConfigName -> DynamicConfigOptions -> DynamicConfigOptions
+filterByConfigName dcname dcopts = SM.fromList (M.toList (M.filterWithKey (\k _ -> k == dcname) (SM.toMap dcopts)))
+
+printDynamicConfigOptionsSingle :: DynamicConfigName -> DynamicConfigOptions -> IO ()
+printDynamicConfigOptionsSingle dcname dcopts = liftIO $ do
+  mapM_ T.putStrLn (getConfigOptionsText (filterByConfigName dcname dcopts))
+
+listConfigsModes :: IOR ()
+listConfigsModes = do
+  tcfg <- getToolConfig
+  liftIO $ printDynamicConfigOptions (listDynamicConfigOptions (tc_dynamicConfigSources tcfg))
+
+showConfigModes :: DynamicConfigName -> IOR ()
+showConfigModes dcname = do
+  tcfg <- getToolConfig
+  liftIO $ printDynamicConfigOptionsSingle dcname (listDynamicConfigOptions (tc_dynamicConfigSources tcfg))
