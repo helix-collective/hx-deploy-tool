@@ -179,34 +179,31 @@ showDefaultNginxConfig = do
 
 type DynamicConfigSources = (StringKeyMap DynamicConfigName DynamicJsonSource)
 
-dynamicJsonSourceToSet :: DynamicJsonSource -> ST.Set DynamicConfigMode
-dynamicJsonSourceToSet x = M.keysSet (SM.toMap( djsrc_modes x))
-
 listDynamicConfigOptions :: DynamicConfigSources -> DynamicConfigOptions
 listDynamicConfigOptions dcsrcs = SM.fromList (M.toList (M.map dynamicJsonSourceToSet (SM.toMap dcsrcs)))
-
-getConfigOptionsTextPart2 :: (ST.Set DynamicConfigMode) -> T.Text
-getConfigOptionsTextPart2 setdcm = T.intercalate (T.pack ", ") (S.toList setdcm)
-
-getConfigOptionsTextPart :: (T.Text, ST.Set DynamicConfigMode) -> T.Text
-getConfigOptionsTextPart tupl = T.intercalate (T.pack ": ") [T.justifyLeft 10 ' ' (fst tupl), getConfigOptionsTextPart2 (snd tupl)]
+  where
+    dynamicJsonSourceToSet :: DynamicJsonSource -> ST.Set DynamicConfigMode
+    dynamicJsonSourceToSet x = M.keysSet (SM.toMap( djsrc_modes x))
 
 getConfigOptionsText :: DynamicConfigOptions -> [T.Text]
-getConfigOptionsText dcopts = map getConfigOptionsTextPart (SM.toList dcopts)
+getConfigOptionsText dcopts = map dcNameModesText (SM.toList dcopts)
+  where
+    dcNameModesText :: (T.Text, ST.Set DynamicConfigMode) -> T.Text
+    dcNameModesText tupl = T.intercalate (T.pack ": ") [T.justifyLeft 10 ' ' (fst tupl), dcModesText (snd tupl)]
 
+    dcModesText :: (ST.Set DynamicConfigMode) -> T.Text
+    dcModesText setdcm = T.intercalate (T.pack ", ") (S.toList setdcm)
 
 printDynamicConfigOptions :: DynamicConfigOptions -> IO ()
 printDynamicConfigOptions dcopts = liftIO $ do
   mapM_ T.putStrLn (getConfigOptionsText dcopts)
 
-
-
-filterByConfigName :: DynamicConfigName -> DynamicConfigOptions -> DynamicConfigOptions
-filterByConfigName dcname dcopts = SM.fromList (M.toList (M.filterWithKey (\k _ -> k == dcname) (SM.toMap dcopts)))
-
 printDynamicConfigOptionsSingle :: DynamicConfigName -> DynamicConfigOptions -> IO ()
 printDynamicConfigOptionsSingle dcname dcopts = liftIO $ do
   mapM_ T.putStrLn (getConfigOptionsText (filterByConfigName dcname dcopts))
+  where
+    filterByConfigName :: DynamicConfigName -> DynamicConfigOptions -> DynamicConfigOptions
+    filterByConfigName dcname dcopts = SM.fromList (M.toList (M.filterWithKey (\k _ -> k == dcname) (SM.toMap dcopts)))
 
 listConfigsModes :: IOR ()
 listConfigsModes = do
