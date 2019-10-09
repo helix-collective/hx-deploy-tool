@@ -4,6 +4,8 @@ import sys.types.Map;
 import types.EndPointLabel;
 import types.DeployLabel;
 import types.StringKeyMap;
+import types.DynamicConfigMode;
+import types.DynamicConfigName;
 
 // The system state stored to manage multiple deploys with
 // a proxy for live switching between them and, where specified, SSL
@@ -37,6 +39,7 @@ struct Deploy {
   DeployLabel label;
   String release;
   Word32 port;
+  StringKeyMap<DynamicConfigName, DynamicConfigMode> dynamicConfigModes;
 };
 
 };

@@ -51,6 +51,11 @@ import Types(IOR, REnv(..), getToolConfig, scopeInfo, info)
 configContextCacheFilePath :: ToolConfig -> StaticConfigName -> FilePath
 configContextCacheFilePath tcfg name = T.unpack (tc_contextCache tcfg) </> T.unpack name <> ".json"
 
+jsrcLabel :: JsonSource -> T.Text
+jsrcLabel (Jsrc_file file) = file
+jsrcLabel (Jsrc_s3 s3Path) = s3Path
+jsrcLabel (Jsrc_awsSecretArn arn) = "AWS secret " <> arn
+
 --- Download the infrastructure context files from the blobstore
 fetchConfigContext :: Maybe Int -> IOR ()
 fetchConfigContext retryAfter = do
@@ -80,11 +85,6 @@ fetchConfigContext retryAfter = do
          info ("Waiting for "<> jsrcLabel jsrc)
          liftIO $ threadDelay (1000000 * delaySecs)
          await awsEnvFn jsrc delaySecs
-
-   jsrcLabel :: JsonSource -> T.Text
-   jsrcLabel (Jsrc_file file) = file
-   jsrcLabel (Jsrc_s3 s3Path) = s3Path
-   jsrcLabel (Jsrc_awsSecretArn arn) = "AWS secret " <> arn
 
    jsrcExists :: IOR AWS.Env -> JsonSource -> IOR Bool
    jsrcExists _ (Jsrc_file file) = do

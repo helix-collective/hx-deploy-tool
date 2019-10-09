@@ -1,0 +1,5 @@
+{
+    "note" : "from queue config active",
+    "active" : true,
+    "url": "something-queue-url"
+}

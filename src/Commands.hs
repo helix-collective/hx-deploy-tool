@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, Rank2Types #-}
 module Commands where
 
+import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified ADL.Core.StringMap as SM
 import qualified Data.Aeson as JS
 import qualified Data.ByteString.Lazy as LBS
@@ -15,8 +17,10 @@ import qualified Network.AWS.ECR as ECR
 import qualified Text.Mustache as TM
 import qualified Text.Mustache.Types as TM
 import qualified Commands.ProxyMode as P
+import qualified ADL.Sys.Types as ST
 
-import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..))
+import ADL.Config(ToolConfig(..), DeployMode(..), ProxyModeConfig(..), DynamicConfigOptions(..), DynamicJsonSource(..), JsonSource(..))
+import ADL.Types(DynamicConfigName, StringKeyMap, DynamicConfigMode)
 import ADL.Release(ReleaseConfig(..))
 import ADL.Core(adlFromJsonFile')
 import Blobs(releaseBlobStore, BlobStore(..))
@@ -43,7 +47,7 @@ import System.IO(stdout, withFile, hIsEOF, IOMode(..))
 import System.Process(callCommand)
 import Path(Path,Abs,Dir,File,parseAbsDir,parseAbsFile)
 import Types(IOR, REnv(..), getToolConfig, scopeInfo)
-import Util(unpackRelease, fetchConfigContext)
+import Util(unpackRelease, fetchConfigContext, jsrcLabel)
 import Util.Aws(mkAwsEnv)
 import Commands.ProxyMode.LocalState(nginxConfTemplate)
 
@@ -118,7 +122,7 @@ stopNoProxy deploy = do
 
   scopeInfo ("Removing Symlink for deployment") $ liftIO $ do
     when currentExists $ removeLink currentReleaseLink
-    
+
 
 -- List the releases available for installation
 listReleases :: IOR ()
@@ -172,3 +176,41 @@ showLog = do
 showDefaultNginxConfig :: IO ()
 showDefaultNginxConfig = do
   T.putStrLn nginxConfTemplate
+
+type DynamicConfigSources = (StringKeyMap DynamicConfigName DynamicJsonSource)
+
+listDynamicConfigOptions :: DynamicConfigSources -> DynamicConfigOptions
+listDynamicConfigOptions dcsrcs = SM.fromList (M.toList (M.map dynamicJsonSourceToSet (SM.toMap dcsrcs)))
+  where
+    dynamicJsonSourceToSet :: DynamicJsonSource -> ST.Set DynamicConfigMode
+    dynamicJsonSourceToSet x = M.keysSet (SM.toMap( djsrc_modes x))
+
+getConfigOptionsText :: DynamicConfigOptions -> [T.Text]
+getConfigOptionsText dcopts = map dcNameModesText (SM.toList dcopts)
+  where
+    dcNameModesText :: (T.Text, ST.Set DynamicConfigMode) -> T.Text
+    dcNameModesText tupl = T.intercalate (T.pack ": ") [T.justifyLeft 10 ' ' (fst tupl), dcModesText (snd tupl)]
+
+    dcModesText :: (ST.Set DynamicConfigMode) -> T.Text
+    dcModesText setdcm = T.intercalate (T.pack ", ") (S.toList setdcm)
+
+printDynamicConfigOptions :: DynamicConfigOptions -> IO ()
+printDynamicConfigOptions dcopts = liftIO $ do
+  mapM_ T.putStrLn (getConfigOptionsText dcopts)
+
+printDynamicConfigOptionsSingle :: DynamicConfigName -> DynamicConfigOptions -> IO ()
+printDynamicConfigOptionsSingle dcname dcopts = liftIO $ do
+  mapM_ T.putStrLn (getConfigOptionsText (filterByConfigName dcname dcopts))
+  where
+    filterByConfigName :: DynamicConfigName -> DynamicConfigOptions -> DynamicConfigOptions
+    filterByConfigName dcname dcopts = SM.fromList (M.toList (M.filterWithKey (\k _ -> k == dcname) (SM.toMap dcopts)))
+
+listConfigsModes :: IOR ()
+listConfigsModes = do
+  tcfg <- getToolConfig
+  liftIO $ printDynamicConfigOptions (listDynamicConfigOptions (tc_dynamicConfigSources tcfg))
+
+showConfigModes :: DynamicConfigName -> IOR ()
+showConfigModes dcname = do
+  tcfg <- getToolConfig
+  liftIO $ printDynamicConfigOptionsSingle dcname (listDynamicConfigOptions (tc_dynamicConfigSources tcfg))

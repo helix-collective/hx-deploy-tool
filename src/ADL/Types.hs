@@ -2,6 +2,8 @@
 module ADL.Types(
     ConfigName,
     DeployLabel,
+    DynamicConfigMode,
+    DynamicConfigName,
     EndPointLabel,
     FilePath,
     S3Path,
@@ -22,6 +24,10 @@ import qualified Prelude
 type ConfigName = T.Text
 
 type DeployLabel = T.Text
+
+type DynamicConfigMode = T.Text
+
+type DynamicConfigName = ConfigName
 
 type EndPointLabel = T.Text
 
