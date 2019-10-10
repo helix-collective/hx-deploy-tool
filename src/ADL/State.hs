@@ -8,6 +8,7 @@ module ADL.State(
 
 import ADL.Core
 import Control.Applicative( (<$>), (<*>), (<|>) )
+import Prelude( ($) )
 import qualified ADL.Types
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
@@ -20,11 +21,12 @@ data Deploy = Deploy
     { d_label :: ADL.Types.DeployLabel
     , d_release :: T.Text
     , d_port :: Data.Word.Word32
+    , d_dynamicConfigModes :: (ADL.Types.StringKeyMap ADL.Types.DynamicConfigName ADL.Types.DynamicConfigMode)
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkDeploy :: ADL.Types.DeployLabel -> T.Text -> Data.Word.Word32 -> Deploy
-mkDeploy label release port = Deploy label release port
+mkDeploy :: ADL.Types.DeployLabel -> T.Text -> Data.Word.Word32 -> (ADL.Types.StringKeyMap ADL.Types.DynamicConfigName ADL.Types.DynamicConfigMode) -> Deploy
+mkDeploy label release port dynamicConfigModes = Deploy label release port dynamicConfigModes
 
 instance AdlValue Deploy where
     atype _ = "state.Deploy"
@@ -33,12 +35,14 @@ instance AdlValue Deploy where
         [ genField "label" d_label
         , genField "release" d_release
         , genField "port" d_port
+        , genField "dynamicConfigModes" d_dynamicConfigModes
         ]
     
     jsonParser = Deploy
         <$> parseField "label"
         <*> parseField "release"
         <*> parseField "port"
+        <*> parseField "dynamicConfigModes"
 
 data SlaveState = SlaveState
     { slaveState_status :: SlaveStatus
@@ -74,10 +78,10 @@ instance AdlValue SlaveStatus where
         SlaveStatus_error v -> genUnionValue "error" v
         )
     
-    jsonParser
-        =   parseUnionVoid "ok" SlaveStatus_ok
-        <|> parseUnionValue "error" SlaveStatus_error
-        <|> parseFail "expected a SlaveStatus"
+    jsonParser = parseUnion $ \disc -> case disc of
+        "ok" -> parseUnionVoid SlaveStatus_ok
+        "error" ->  parseUnionValue SlaveStatus_error
+        _ -> parseFail "expected a discriminator for SlaveStatus (ok,error)" 
 
 data State = State
     { s_deploys :: (ADL.Types.StringKeyMap ADL.Types.DeployLabel Deploy)

@@ -1,5 +1,5 @@
 {
-    "releasesDir" : "--MACHINE_ROOT--/opt/releases",
+    "deploysDir" : "--MACHINE_ROOT--/opt/deploys",
     "contextCache" : "--MACHINE_ROOT--/opt/etc/configsCache",
     "logFile" : "--MACHINE_ROOT--/opt/camus2.log",
     "releases" : {
@@ -16,5 +16,32 @@
             "file" : "--S3EMULATE--/configSources/configsrcY.json"
         }
     },
+
+    "dynamicConfigSources": {
+        "queue" : {
+            "defaultMode" : "inactive",
+            "modes" : {
+                "inactive" : {
+                    "file" : "--S3EMULATE--/configSources/queueConfigInactive.json"
+                },
+                "active" : {
+                    "file" : "--S3EMULATE--/configSources/queueConfigActive.json"
+                }
+            }
+        },
+
+        "processor" : {
+            "defaultMode" : "light",
+            "modes" : {
+                "light" : {
+                    "file" : "--S3EMULATE--/configSources/processorConfigLight.json"
+                },
+                "heavy" : {
+                    "file" : "--S3EMULATE--/configSources/processorConfigHeavy.json"
+                }
+            }
+        }
+    },
+
     "deployMode" : "noproxy"
 }

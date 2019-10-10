@@ -12,10 +12,16 @@ type EndPointLabel = String;
 
 type DeployLabel = String;
 
-/// ConfigTopic is a name of one of the keys of the top level object used for template interpolation
+/// ConfigName is a name of one of the keys of the top level object used for template interpolation
 type ConfigName = String;
 
-/// Name of a topic as part of the static config contexts - eg 'infrastructure' 'secrets'
+/// ConfigName as part of the static config - eg 'infrastructure' 'secrets'
 type StaticConfigName = ConfigName;
+
+/// ConfigName for switchable dynamic configs - eg 'queue' 'processing'
+type DynamicConfigName = ConfigName;
+
+/// Name of a mode of a dynamic config - eg 'active' 'inactive'
+type DynamicConfigMode = String;
 
 };

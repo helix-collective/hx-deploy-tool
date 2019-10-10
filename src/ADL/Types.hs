@@ -2,6 +2,8 @@
 module ADL.Types(
     ConfigName,
     DeployLabel,
+    DynamicConfigMode,
+    DynamicConfigName,
     EndPointLabel,
     FilePath,
     S3Path,
@@ -11,6 +13,7 @@ module ADL.Types(
 
 import ADL.Core
 import Control.Applicative( (<$>), (<*>), (<|>) )
+import Prelude( ($) )
 import qualified Data.Aeson as JS
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map as M
@@ -21,6 +24,10 @@ import qualified Prelude
 type ConfigName = T.Text
 
 type DeployLabel = T.Text
+
+type DynamicConfigMode = T.Text
+
+type DynamicConfigName = ConfigName
 
 type EndPointLabel = T.Text
 

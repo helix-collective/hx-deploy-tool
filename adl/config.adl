@@ -4,8 +4,11 @@ import types.FilePath;
 import types.S3Path;
 import types.EndPointLabel;
 import types.StaticConfigName;
+import types.DynamicConfigName;
+import types.DynamicConfigMode;
 import types.StringKeyMap;
 import sys.types.Map;
+import sys.types.Set;
 import sys.types.Pair;
 import sys.types.Maybe;
 
@@ -25,8 +28,11 @@ struct ToolConfig {
     /// The storage location for release zip files
     BlobStoreConfig releases;
 
-    /// Static Config contexts
+    /// Static config sources
     StringKeyMap<StaticConfigName, JsonSource> configSources = {};
+
+    /// Dynamic config sources
+    StringKeyMap<DynamicConfigName, DynamicJsonSource> dynamicConfigSources = {};
 
     DeployMode deployMode = "noproxy";
 
@@ -117,6 +123,16 @@ union JsonSource
     /// Context from AWS secrets manager secret
     String awsSecretArn;
 };
+
+/// A config source that can be changed to different named Modes at runtime.
+struct DynamicJsonSource {
+  DynamicConfigMode defaultMode;
+
+  StringKeyMap<DynamicConfigMode, JsonSource> modes;
+};
+
+/// Listing of available modes per configName
+type DynamicConfigOptions = StringKeyMap<DynamicConfigName, Set<DynamicConfigMode>>;
 
 union Verbosity
 {
