@@ -7,10 +7,10 @@
     "autoCertName": "{AWS SSH CERT NAME}",
     "autoCertContactEmail": "",
     "releases": {
-      "s3": "*REQUIRED*s3://{S3 RELEASE BUCKET PATH}- only specify one location,local or S3"
+      "s3": "*REQUIRED*s3://{S3 RELEASE BUCKET PATH}- only specify one location,local or S3",
       "localdir": "*REQUIRED*/tmp/releases - only specify one location,local or S3"
     },
-    "deployContexts": [],
+    "configSources": {},
     "deployMode": {
       "proxy": {
         "endPoints": {
