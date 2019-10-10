@@ -46,23 +46,29 @@ instance AdlValue Deploy where
 
 data SlaveState = SlaveState
     { slaveState_status :: SlaveStatus
+    , slaveState_ipAddress :: T.Text
+    , slaveState_hostName :: T.Text
     , slaveState_state :: State
     }
     deriving (Prelude.Eq,Prelude.Ord,Prelude.Show)
 
-mkSlaveState :: SlaveStatus -> State -> SlaveState
-mkSlaveState status state = SlaveState status state
+mkSlaveState :: SlaveStatus -> T.Text -> T.Text -> State -> SlaveState
+mkSlaveState status ipAddress hostName state = SlaveState status ipAddress hostName state
 
 instance AdlValue SlaveState where
     atype _ = "state.SlaveState"
     
     jsonGen = genObject
         [ genField "status" slaveState_status
+        , genField "ipAddress" slaveState_ipAddress
+        , genField "hostName" slaveState_hostName
         , genField "state" slaveState_state
         ]
     
     jsonParser = SlaveState
         <$> parseField "status"
+        <*> parseField "ipAddress"
+        <*> parseField "hostName"
         <*> parseField "state"
 
 data SlaveStatus

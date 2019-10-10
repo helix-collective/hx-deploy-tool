@@ -44,6 +44,8 @@ import Data.Foldable(for_)
 import Data.Monoid
 import Data.Word
 import Data.Time.Clock(addUTCTime,diffUTCTime,getCurrentTime)
+import Network.HostName
+import Network.Info      (getNetworkInterfaces, NetworkInterface, name, ipv4)
 import System.Directory(createDirectoryIfMissing,doesFileExist,doesDirectoryExist,withCurrentDirectory, removeDirectoryRecursive)
 import System.FilePath(takeBaseName, takeDirectory, dropExtension, (</>))
 import System.Process(callCommand)
@@ -54,18 +56,22 @@ showStatus :: Bool -> IOR ()
 showStatus showSlaves = do
   pm <- getProxyModeConfig
   state <- getState
+  liftIO $ T.putStrLn "---------------------MASTER-------------------------------------------"
   liftIO $ printState pm state
   when showSlaves $ do
     slaveStates <- getSlaveStates
+    liftIO $ T.putStrLn "---------------------SLAVES-------------------------------------------"
     liftIO $ for_ slaveStates $ \(label,slaveState) -> do
-      T.putStrLn "----------------------------------------------------------------------"
       T.putStrLn ("Slave: " <> label)
+      T.putStrLn ("Slave IP: " <> (slaveState_ipAddress (lm_value slaveState)))
+      T.putStrLn ("Slave Hostname: " <> (slaveState_hostName (lm_value slaveState)))
       case slaveState_status (lm_value slaveState) of
         SlaveStatus_ok -> T.putStrLn ("Status: OK")
         SlaveStatus_error emsg -> T.putStrLn ("Status: Error (" <> emsg <> ")")
       for_ (lm_modifiedAt slaveState) $ \lm ->
          T.putStrLn ("Updated: " <> (T.pack (show lm)))
       printState pm (slaveState_state (lm_value slaveState))
+      T.putStrLn "----------------------------------------------------------------------"
   where
     printState pm state = do
       T.putStrLn "Endpoints:"
@@ -165,15 +171,29 @@ slaveUpdate_ = do
   scopeInfo ("Fetching state from " <> masterS3Path remoteStateS3) $ do
     state <- sa_get (remoteState remoteStateS3)
     label <- getSlaveLabel
-    handle (ehandler remoteStateS3 label) $ do
+    myIp <- getSlaveIP (pm_slaveInterfaceName pm) <$> (liftIO getNetworkInterfaces)
+    myHost <-  (liftIO getHostName)
+    handle (ehandler remoteStateS3 label myIp myHost) $ do
       sa_update localState (const state)
-      writeSlaveState remoteStateS3 label (SlaveState SlaveStatus_ok state)
+      writeSlaveState remoteStateS3 label (SlaveState SlaveStatus_ok myIp (T.pack myHost) state)
   where
-    ehandler remoteStateS3 label e = do
+    ehandler remoteStateS3 label  myIp myHost e = do
       let emsg = T.pack (show (e::SomeException))
       existingState <- sa_get localState
-      writeSlaveState remoteStateS3 label (SlaveState (SlaveStatus_error emsg) existingState)
+      writeSlaveState remoteStateS3 label (SlaveState (SlaveStatus_error emsg) myIp (T.pack myHost) existingState)
       liftIO $ throwIO e
+
+
+getSlaveIP :: T.Text -> [NetworkInterface]  -> T.Text
+getSlaveIP interfaceName interfaces = do
+  case interfaceByName of
+    interface:_ -> ( T.pack . show . ipv4 ) interface
+    _ -> (T.pack "Network Interface " <> interfaceName <> "not found" )
+    where 
+      interfaceByName = filterNetworkInterfaces interfaceName interfaces 
+
+      filterNetworkInterfaces ::  T.Text -> [NetworkInterface] ->  [NetworkInterface]
+      filterNetworkInterfaces interfaceName interfaces = filter (\x -> name x == (T.unpack interfaceName) ) interfaces    
 
 -- Flash slave state from S3 that is more than 5 minutes old
 slaveFlush :: IOR ()

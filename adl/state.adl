@@ -20,10 +20,16 @@ struct State {
 };
 
 
-// The reported state of a slave
+// The (remotely) reported state of a slave
 struct SlaveState {
   // The result of the last state change
   SlaveStatus status;
+  
+  // The IP of the slave on which camus2 is running
+  String ipAddress;
+
+  //Host name of the slave
+  String hostName;
 
   // The state of the slave after the last succesful state change
   State state;

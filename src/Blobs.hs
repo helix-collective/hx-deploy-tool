@@ -41,7 +41,8 @@ awsBlobStore s3Path = do
     objectKey blobname = S3.extendObjectKey objectPrefix ("/" <> blobname)
 
     bs_names env = do
-      S3.listObjects env bucketName objectPrefix
+      keysAndNames <- S3.listObjectsPrefixesAndNames env bucketName objectPrefix
+      return (map snd keysAndNames)
 
     bs_exists env blobname = do
       S3.objectExists env bucketName (objectKey blobname)

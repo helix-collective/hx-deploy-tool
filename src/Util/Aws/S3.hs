@@ -6,6 +6,7 @@ module Util.Aws.S3(
   downloadFileFrom,
   extendObjectKey,
   listObjects,
+  listObjectsPrefixesAndNames,
   objectExists,
   readObject,
   splitPath,
@@ -84,13 +85,33 @@ deleteObject env bucketName objectKey = do
     onServiceError se | view serviceStatus se == notFound404 = return ()
                       | otherwise                            = throwing _ServiceError se
 
-listObjects :: Env -> S3.BucketName -> S3.ObjectKey -> IO [T.Text]
+listObjects :: Env -> S3.BucketName -> S3.ObjectKey -> IO [S3.Object]
 listObjects env bucketName (S3.ObjectKey prefix) = do
     let listObjectReq = set S3.loPrefix (Just prefix) (S3.listObjects bucketName)
     runResourceT . runAWST env $ do
       objects <- runConduit (paginate listObjectReq .| CL.foldMap (view S3.lorsContents))
       let sortedObjects = reverse (sortOn (view S3.oLastModified) objects)
-      return (catMaybes (map (\o -> view S3.oKey o ^? S3.keyName '/') sortedObjects))
+      return (sortedObjects)
+    
+s3Name :: S3.Object -> Maybe T.Text
+s3Name o = view S3.oKey o ^? S3.keyName '/'
+
+s3Prefix :: S3.Object -> Maybe T.Text
+s3Prefix o = view S3.oKey o ^? S3.keyPrefix '/'
+
+
+s3PrefixAndName :: S3.Object -> Maybe (T.Text,T.Text)
+s3PrefixAndName o = case s3Prefix o of
+  Nothing -> Nothing
+  (Just prefix) -> case s3Name o of
+    Nothing -> Nothing
+    (Just name) -> Just (prefix,name)
+
+    -- returns (prefix,name)
+listObjectsPrefixesAndNames :: Env -> S3.BucketName -> S3.ObjectKey -> IO [(T.Text,T.Text)]
+listObjectsPrefixesAndNames env bucketName objectKey = do
+    objs <- listObjects env bucketName objectKey
+    return (catMaybes (map s3PrefixAndName objs))
 
 objectExists :: Env -> S3.BucketName -> S3.ObjectKey -> IO Bool
 objectExists env bucketName objectKey = do
