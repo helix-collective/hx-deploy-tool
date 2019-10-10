@@ -1,0 +1,47 @@
+# The camus2 configuration file
+#
+# The configuration can be supplied in yaml or json, and needs to
+# adhere to a strict format. For more information, refer to 
+# https://github.com/helix-collective/hx-deploy-tool/blob/master/adl/config.adl
+# where the ADL spec is defined, or have a look at the documented examples
+# https://helix-collective.github.io/hx-deploy-tool/
+#
+#
+# The following is the configuration for the reverse proxy deployment example:
+#
+# This location is where the release archives will be unpacked.
+# It also serves as a working directory, and will house the nginx container,
+# as well as state.json. Camus2 needs r/w/d rights.
+deploysDir: /tmp/deploytest/releases
+# The log file serves to store the camus2 logs only, the log management of the
+# app you are deploying needs to be managed separately.
+logFile: /tmp/deploytest/camus2.log
+# The location where camus2 will look for your release archives
+releases: 
+  localdir: /tmp/tests
+# This section specifies the details of the reverse proxy configuration. 
+# If not specified, it defaults to 'noproxy'
+deployMode: 
+  proxy: 
+    endPoints: 
+# You can define as many enpoints as you like
+# This is the short name of the endpoint for use with camus2
+      main: 
+        serverNames: 
+# This is the actual endpoint nginx wil expose
+          - main.localhost
+        etype: httpOnly
+      test: 
+        serverNames: 
+          - test.localhost
+        etype: httpOnly
+# This is the port range that camus2 will assign to deployments.
+# Make sure there is a sufficient range for the number of deployments and endpoints
+# that you want to use. It is useful to have a 200 port buffer between this range
+# and other reserved ports.
+    dynamicPortRange: 
+      v1: 8000
+      v2: 8100
+      
+    
+  

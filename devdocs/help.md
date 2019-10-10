@@ -1,4 +1,4 @@
-camus2 is a simple tool to manage docker based application
+Camus2 is a simple tool to manage docker based application
 deployments at helix.
 
 A software release is a (typically small) zip archive containing pure
@@ -7,7 +7,7 @@ files templates. `c2` can fetch such releases from AWS S3,
 unpack them, configure it with appropriate environmental details and
 start the system.
 
-camus2 itself has a json formatted configuration file with
+Camus2 itself has a json formatted configuration file with
 a schema specfied in ADL (see config.adl in the source
 distribution). This specifies:
 
@@ -57,7 +57,7 @@ running indefinitely.
 # Deployments without a proxy
 The following subcommands are used to manage proxyless deployments:
 
-## c2 select <release>
+## c2 start <release>
 The command combines all of the necessary functions to replace
 any existing running release with the specified release.
 Specifically it:
@@ -99,7 +99,9 @@ to permit access to configured ECR repositories. This command is
 typically run on first boot.
 
 ## c2 show-log
-Show the history of releases deployed via the select command.
+Show the history of releases deployed via the start command.
 
 ## c2 show-default-nginx-config
 Outputs the default template for the nginx config.
+
+- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/index.html)
