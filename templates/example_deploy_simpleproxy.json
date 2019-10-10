@@ -1,5 +1,5 @@
 {
-    "releasesDir": "{*REQUIRED*RELEASE DIRECTORY}",
+    "deploysDir": "{*REQUIRED*RELEASE DIRECTORY}",
     "contextCache": "{*REQUIRED*CONFIG DIRECTORY}",
     "logFile": "{*REQUIRED*LOG FILE LOCATION: requires directory to exist}",
     "letsencryptPrefixDir": "{PREFIX DIRECTORY}",
