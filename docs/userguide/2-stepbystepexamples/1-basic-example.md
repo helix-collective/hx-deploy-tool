@@ -5,7 +5,7 @@ Here is how to do a simple deployment:
 ## 1.1. Download the latest release of camus2
 
 Seems a little obvious, but the camus2 release includes a bunch of goodies that you will need to make the deployment work.
-Have a look and make sure you meet the [minimum requirements](/hx-deploy-tool/docs/userguide/1-welcome/5-minimum-requirements).
+Have a look and make sure you meet the [minimum requirements](/hx-deploy-tool/userguide/1-welcome/5-minimum-requirements).
 
 We are going to use camus2 to deploy a release on a single machine, without a proxy.
 
@@ -65,7 +65,9 @@ releases:
 
 ```
 
-You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/docs/userguide/3-reference/1-camus2-config)
+You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/userguide/3-reference/1-camus2-config)
+
+Example templates, including templates for this example, can be found [here](https://github.com/helix-collective/hx-deploy-tool/templates/)
 
 Copy the executable binary that you downloaded as part of the latest release to a suitable folder for execution.
 
@@ -95,7 +97,7 @@ If you want to see the history captured in the logs, hx-deploytool will fetch an
 
 Now lets step into a more complicated deployment...
 
-[Deploy with a proxy sidecar](/hx-deploy-tool/docs/userguide/proxy-example)
+[Deploy with a proxy sidecar](/hx-deploy-tool/userguide/proxy-example)
 
 ---
 

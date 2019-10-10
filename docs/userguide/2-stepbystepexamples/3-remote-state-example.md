@@ -1,11 +1,11 @@
 # Autoscaling deployments (remote state) example
 
-Deploying in an autoscaling group is similar to, and builds on the [reverse proxy sidecar](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/2-proxy-example) example, so if you have that set up already, you can add the remote s3 and slave label to your config, and skip to **Deploy our test** (but recommending stopping all containers and emptying the release and log directories so you can follow the example)
+Deploying in an autoscaling group is similar to, and builds on the [reverse proxy sidecar](/hx-deploy-tool/userguide/2-stepbystepexamples/2-proxy-example) example, so if you have that set up already, you can add the remote s3 and slave label to your config, and skip to **Deploy our test** (but recommending stopping all containers and emptying the release and log directories so you can follow the example)
 
 ## 1.1. Download the latest release of camus2
 
 Seems a little obvious, but the release includes a bunch of goodies that you will need to make the deployment work.
-Have a look and make sure you meet the [minimum requirements](/hx-deploy-tool/docs/userguide/1-welcome/5-minimum-requirements).
+Have a look and make sure you meet the [minimum requirements](/hx-deploy-tool/userguide/1-welcome/5-minimum-requirements).
 
 We are going to use camus2 to deploy a release on a single machine, with an automatically configured nginx reverse proxy.
 
@@ -45,7 +45,7 @@ services:
 Note the {{ports.http}} in the place of the host port in the docker-compose.yml.
 camus2 will get this parameter from the release config (camus2.json), and inject it into any template with relevant tags, and create a non-template artefact with all tags replaced with values.
 
-To that end, rename the file to docker-compose.yml.tpl so that the tool will recognise it as a template. More detail around the mustache magid in [Template anything](/hx-deploy-tool/docs/userguide/3-reference/3-templateanything) available with the tool after the link.
+To that end, rename the file to docker-compose.yml.tpl so that the tool will recognise it as a template. More detail around the mustache magid in [Template anything](/hx-deploy-tool/userguide/3-reference/3-templateanything) available with the tool after the link.
 
 Our release will also include a release.json with the following:
 
@@ -104,7 +104,9 @@ This differs from the proxy example only in specifying 2 additional parameters, 
 
 The slave label is used for logging, and, if ommitted, camus2 will query the aws api for the ec2 instance name/label, which will make it easy to identify the slave in ec2 from the slave status on s3.
 
-You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/docs/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/docs/userguide/3-reference/1-camus2-config)
+You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/userguide/3-reference/1-camus2-config)
+Example templates, including templates for this example, can be found [here](https://github.com/helix-collective/hx-deploy-tool/templates/)
+
 
 Copy the executable binary that you downloaded as part of the latest camus2 release to a suitable folder for execution.
 

@@ -31,7 +31,7 @@ config file path can be overidden by setting the `CAMUS2_CONFIG` environment var
 
 The configuration file must be json formatted, and be consistent with the
 [ToolConfig][toolconfig-adl] ADL type (ADL is the [Algebraic Data Language][adl]).
-[An example configuration file can be found at: ](/docs/example_deploy.json)
+[Example configuration files can be found at: ](/templates/)
 
 Additionally, aws credentials must be supplied and will be expected at either:
 $HOME/.aws/credentials file
@@ -47,3 +47,7 @@ http://hackage.haskell.org/package/amazonka-1.6.1/docs/Network-AWS-Auth.html
 [adl]:https://github.com/timbod7/adl
 
 
+---
+
+- [Usage](/helix-collective/devdocs/help.md)
+- [Userguide home](https://helix-collective.github.io/hx-deploy-tool/index.html)

@@ -5,7 +5,7 @@
 At a minimum, you will need the following (with example files included in the release):
 
 - Server where you will be deploying your release
-- Configuration file (examples included in the release)
+- Configuration file (examples included in the release) or [here](https://github.com/helix-collective/hx-deploy-tool/templates/)
 - Release store - keeps all published [release zip archives](... link to details of the zip structure...). The release store may either be a path in the local file system or a path in an s3 bucket.
 - Release archive - At least one versioned .zip file needs to be in the release store and must contain at a minium:
   - release.json - (examples included in the release) - a config for deployment including predeploy, deploy and stop commands to execute. Also declares template files.

@@ -1,10 +1,10 @@
 # Introduction
 
 ## Quick start
-Grab the latest release from [camus2](https://github.com/helix-collective/hx-deploy-tool/releases) gitub, and have a look at the [minimum requirements](/hx-deploy-tool/docs/userguide/1-welcome/5-minimum-requirements), and you are good to go!
+Grab the latest release from [camus2](https://github.com/helix-collective/hx-deploy-tool/releases) gitub, and have a look at the [minimum requirements](/hx-deploy-tool/userguide/1-welcome/5-minimum-requirements), and you are good to go!
 
-If you are looking for a tl/dr cookbook example using camus2, follow the link to our [simple example page](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/1-basic-example), the [proxy example](/hx-deploy-tool/docs/userguide/2-stepbystepexamples/2-proxy-example)
-or, jump to our userguide [Index](/hx-deploy-tool/docs/index.html) for more
+If you are looking for a tl/dr cookbook example using camus2, follow the link to our [simple example page](/hx-deploy-tool/userguide/2-stepbystepexamples/1-basic-example), the [proxy example](/hx-deploy-tool/userguide/2-stepbystepexamples/2-proxy-example)
+or, jump to our userguide [Index](/hx-deploy-tool/index.html) for more
 
 ## Why use camus2
 
