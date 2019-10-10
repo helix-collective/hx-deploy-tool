@@ -23,5 +23,5 @@ it sounds like you may benefit from using one of the many orchestration tools av
 
 ---
 
-- [Index](/hx-deploy-tool/docs/index)
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

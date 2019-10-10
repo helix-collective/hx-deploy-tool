@@ -10,8 +10,7 @@
 - **_Optional_** AWS Credentials: see the [official AWS credential page](https://aws.amazon.com/blogs/security/a-new-and-standardized-way-to-manage-credentials-in-the-aws-sdks/)
 
 
-
 ---
 
-- [Index](/hx-deploy-tool/docs/index)
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

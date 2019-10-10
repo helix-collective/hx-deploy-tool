@@ -50,8 +50,7 @@ Additionally, you can connect your AWS autoscaling group and load balancer to a 
 
 Each instance of camus2, whether in slave or master mode, will log its actions and state. This allows you to investigate when there is a problem with a specific deployment.
 
-
 ---
 
-- [Index](/hx-deploy-tool/docs/index)
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)

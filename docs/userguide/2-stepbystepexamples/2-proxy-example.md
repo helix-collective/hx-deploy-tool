@@ -180,5 +180,5 @@ More details can be found in the how it works section, or the example config fil
 
 ---
 
-- [Index](/hx-deploy-tool/docs/index)
+- [Index](/hx-deploy-tool/index)
 - [Developers Guide/Source code](https://github.com/helix-collective/hx-deploy-tool)
