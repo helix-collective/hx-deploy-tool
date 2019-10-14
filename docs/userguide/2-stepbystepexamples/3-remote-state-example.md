@@ -105,7 +105,7 @@ This differs from the proxy example only in specifying 2 additional parameters, 
 The slave label is used for logging, and, if ommitted, camus2 will query the aws api for the ec2 instance name/label, which will make it easy to identify the slave in ec2 from the slave status on s3.
 
 You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/userguide/3-reference/1-camus2-config)
-Example templates, including templates for this example, can be found [here](https://github.com/helix-collective/hx-deploy-tool/templates/)
+Example templates, including templates for this example, can be found [here](https://github.com/helix-collective/hx-deploy-tool/tree/master/templates/)
 
 
 Copy the executable binary that you downloaded as part of the latest camus2 release to a suitable folder for execution.

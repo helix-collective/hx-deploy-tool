@@ -89,7 +89,7 @@ deployMode:
 ```
 
 You can read more about the release archive and configuration in [Managing your release archive](/hx-deploy-tool/userguide/3-reference/2-release-archive), and [Camus2 configuration](/hx-deploy-tool/userguide/3-reference/1-camus2-config)
-Example templates, including templates for this example, can be found [here](https://github.com/helix-collective/hx-deploy-tool/templates/)
+Example templates, including templates for this example, can be found [here](https://github.com/helix-collective/hx-deploy-tool/tree/master/templates/)
 
 Copy the executable binary that you downloaded as part of the latest release to a suitable folder for execution.
 
