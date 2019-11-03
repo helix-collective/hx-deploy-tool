@@ -33,6 +33,10 @@ http {
     listen 80 default_server;
     location {{incomingPath}} {
       proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-Host $host:80;
+      proxy_set_header X-Forwarded-Server $host;
+      proxy_set_header X-Forwarded-Port 80;
+      proxy_set_header X-Forwarded-Proto http;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_pass http://localhost:{{outgoingPort}}{{outgoingPath}};
     }
@@ -47,6 +51,10 @@ http {
     server_name {{serverNames}};
     location / {
       proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-Host $host:80;
+      proxy_set_header X-Forwarded-Server $host;
+      proxy_set_header X-Forwarded-Port 80;
+      proxy_set_header X-Forwarded-Proto http;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_pass http://localhost:{{port}};
       proxy_send_timeout          300;
@@ -82,6 +90,10 @@ http {
     ssl_certificate_key {{sslCertKeyPath}};
     location / {
       proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-Host $host:443;
+      proxy_set_header X-Forwarded-Server $host;
+      proxy_set_header X-Forwarded-Port 443;
+      proxy_set_header X-Forwarded-Proto https;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_pass http://localhost:{{port}};
       proxy_send_timeout          300;
